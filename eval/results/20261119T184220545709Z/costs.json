@@ -1,0 +1,15 @@
+{
+  "request_attempts": 512,
+  "operations": {
+    "answer": 200,
+    "faithfulness": 200,
+    "rerank": 112
+  },
+  "prompt_tokens": 3135787,
+  "completion_tokens": 240914,
+  "known_token_cost_usd": 0.156023653,
+  "unknown_cost_attempts": 11,
+  "reconciled_at_configured_tariff_attempts": 77,
+  "fully_metered": false,
+  "note": "Computed from API usage and the per-request pricing snapshot, not an invoice. Reconciled attempts use the supplied configured tariff when the request-time snapshot was absent; original API logs are not modified. Failed/time-out requests can have unknown charges; verify balance delta in the router panel. Includes retries and reasoning counted by the provider. Unknown costs are not treated as zero."
+}

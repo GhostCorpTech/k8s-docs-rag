@@ -1,0 +1,121 @@
+{
+  "run_id": "20261119T184220545709Z",
+  "created_at": "2026-11-19T18:42:20.546859+00:00",
+  "evaluation_version": "2026-11-v2",
+  "with_faithfulness": true,
+  "configuration": {
+    "api_base_url": "openai-compatible-router",
+    "chat_model": "glm-5.3-flash",
+    "rerank_model": "glm-5.3-flash",
+    "judge_model": "glm-5.3-flash",
+    "embedding_provider": "local",
+    "embedding_model": "intfloat/multilingual-e5-base",
+    "embedding_base_url": null,
+    "collection_prefix": "kubernetes_docs_v4",
+    "dense_limit": 30,
+    "lexical_limit": 30,
+    "final_limit": 8,
+    "rrf_k": 60,
+    "rrf_dense_weight": 1.0,
+    "rrf_lexical_weight": 1.0,
+    "max_context_chars": 30000,
+    "lexical_query_policy": "shared_sqlite_cache; exact translated query stored per record"
+  },
+  "index": {
+    "source_commit": "a96b3ebd15296afc96819e6e5f8a90bcff00b828",
+    "chunker_version": "2026-11-v4-token-aware",
+    "page_hashes": {
+      "heading": "25c34896ce89281082a0b3b8877a1d59a0deb6c02567e85d8b01be8f98b72323",
+      "window": "930127117c26a1a85fe5beda6b306705b875c5e8bd178e7d7d7a3e0be767f4ae"
+    },
+    "counts": {
+      "heading": {
+        "pages": 1730,
+        "chunks": 19463
+      },
+      "window": {
+        "pages": 1730,
+        "chunks": 12625
+      }
+    }
+  },
+  "questions_sha256": "bdb0a7b8f42d10ab23cb1e7e3638439c3414c6012cdc4cc3c259de26a3118212",
+  "question_count": 50,
+  "execution_history": [
+    {
+      "at": "2026-11-19T19:54:32.218573+00:00",
+      "previous_workers": 1,
+      "workers": 2,
+      "action": "resume"
+    }
+  ],
+  "execution": {
+    "workers": 2
+  },
+  "completed_at": "2026-11-19T21:09:10.771653+00:00",
+  "metrics": [
+    {
+      "strategy": "heading",
+      "reranker": false,
+      "questions": 50,
+      "recall_at_5": 0.92,
+      "recall_at_10": 0.96,
+      "mrr_at_10": 0.6595238095238095,
+      "faithfulness": 0.955,
+      "hit_rate_at_5": 0.92,
+      "hit_rate_at_10": 0.96,
+      "faithfulness_questions": 50
+    },
+    {
+      "strategy": "heading",
+      "reranker": true,
+      "questions": 50,
+      "recall_at_5": 0.87,
+      "recall_at_10": 0.98,
+      "mrr_at_10": 0.7557222222222222,
+      "faithfulness": 0.966,
+      "hit_rate_at_5": 0.88,
+      "hit_rate_at_10": 0.98,
+      "faithfulness_questions": 50
+    },
+    {
+      "strategy": "window",
+      "reranker": false,
+      "questions": 50,
+      "recall_at_5": 0.96,
+      "recall_at_10": 1.0,
+      "mrr_at_10": 0.7926904761904763,
+      "faithfulness": 0.975,
+      "hit_rate_at_5": 0.96,
+      "hit_rate_at_10": 1.0,
+      "faithfulness_questions": 50
+    },
+    {
+      "strategy": "window",
+      "reranker": true,
+      "questions": 50,
+      "recall_at_5": 0.93,
+      "recall_at_10": 1.0,
+      "mrr_at_10": 0.7460238095238095,
+      "faithfulness": 0.9764,
+      "hit_rate_at_5": 0.94,
+      "hit_rate_at_10": 1.0,
+      "faithfulness_questions": 50
+    }
+  ],
+  "billing": {
+    "request_attempts": 512,
+    "operations": {
+      "answer": 200,
+      "faithfulness": 200,
+      "rerank": 112
+    },
+    "prompt_tokens": 3135787,
+    "completion_tokens": 240914,
+    "known_token_cost_usd": 0.156023653,
+    "unknown_cost_attempts": 11,
+    "reconciled_at_configured_tariff_attempts": 77,
+    "fully_metered": false,
+    "note": "Computed from API usage and the per-request pricing snapshot, not an invoice. Reconciled attempts use the supplied configured tariff when the request-time snapshot was absent; original API logs are not modified. Failed/time-out requests can have unknown charges; verify balance delta in the router panel. Includes retries and reasoning counted by the provider. Unknown costs are not treated as zero."
+  }
+}

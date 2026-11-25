@@ -1,0 +1,129 @@
+{
+  "run_id": "20261114T152921Z",
+  "created_at": "2026-11-14T19:47:41.349945+00:00",
+  "with_faithfulness": true,
+  "configuration": {
+    "api_base_url": "openai-compatible-router",
+    "chat_model": "glm-5.3-flash",
+    "rerank_model": "glm-5.3-flash",
+    "judge_model": "glm-5.3-flash",
+    "embedding_provider": "local",
+    "embedding_model": "intfloat/multilingual-e5-base"
+  },
+  "metrics": [
+    {
+      "strategy": "heading",
+      "reranker": false,
+      "questions": 50,
+      "recall_at_5": 0.61,
+      "recall_at_10": 0.77,
+      "mrr_at_10": 0.33591269841269844,
+      "faithfulness": 0.967,
+      "hit_rate_at_5": 0.62,
+      "hit_rate_at_10": 0.78,
+      "faithfulness_questions": 50
+    },
+    {
+      "strategy": "heading",
+      "reranker": true,
+      "questions": 50,
+      "recall_at_5": 0.91,
+      "recall_at_10": 0.94,
+      "mrr_at_10": 0.7070000000000001,
+      "faithfulness": 0.9734,
+      "hit_rate_at_5": 0.92,
+      "hit_rate_at_10": 0.94,
+      "faithfulness_questions": 50
+    },
+    {
+      "strategy": "window",
+      "reranker": false,
+      "questions": 50,
+      "recall_at_5": 0.73,
+      "recall_at_10": 0.91,
+      "mrr_at_10": 0.35310317460317464,
+      "faithfulness": 0.962,
+      "hit_rate_at_5": 0.74,
+      "hit_rate_at_10": 0.92,
+      "faithfulness_questions": 50
+    },
+    {
+      "strategy": "window",
+      "reranker": true,
+      "questions": 50,
+      "recall_at_5": 0.9,
+      "recall_at_10": 0.96,
+      "mrr_at_10": 0.7270555555555555,
+      "faithfulness": 0.8708,
+      "hit_rate_at_5": 0.9,
+      "hit_rate_at_10": 0.96,
+      "faithfulness_questions": 50
+    }
+  ],
+  "evaluation_version": "legacy-audited",
+  "audited_at": "2026-11-19T14:26:41.863999+00:00",
+  "warnings": [
+    "Legacy Recall was HitRate; Recall is now recomputed as macro-average fraction of relevant pages found (anchors ignored).",
+    "Legacy faithfulness is unverified: judge saw up to 10 hits, generation up to 8. Errors parsing scores were silently replaced by zero.",
+    "Legacy embeddings used character windows and truncated overlong E5 inputs. Do not compare this run with token-aware v4 indexes as a router-only experiment.",
+    "Provider metadata was saved only at completion, not at start; original raw provider responses are unavailable."
+  ],
+  "suspicious_records": [
+    {
+      "configuration": "window_rerank_on",
+      "id": "q024",
+      "reason": "zero faithfulness: genuine zero or swallowed JSON error; raw provider response was not saved"
+    },
+    {
+      "configuration": "window_rerank_on",
+      "id": "q024",
+      "reason": "all rerank scores zero: genuine tie or swallowed JSON error"
+    },
+    {
+      "configuration": "window_rerank_on",
+      "id": "q026",
+      "reason": "all rerank scores zero: genuine tie or swallowed JSON error"
+    },
+    {
+      "configuration": "window_rerank_on",
+      "id": "q027",
+      "reason": "zero faithfulness: genuine zero or swallowed JSON error; raw provider response was not saved"
+    },
+    {
+      "configuration": "window_rerank_on",
+      "id": "q028",
+      "reason": "all rerank scores zero: genuine tie or swallowed JSON error"
+    },
+    {
+      "configuration": "window_rerank_on",
+      "id": "q034",
+      "reason": "zero faithfulness: genuine zero or swallowed JSON error; raw provider response was not saved"
+    },
+    {
+      "configuration": "window_rerank_on",
+      "id": "q034",
+      "reason": "all rerank scores zero: genuine tie or swallowed JSON error"
+    },
+    {
+      "configuration": "window_rerank_on",
+      "id": "q036",
+      "reason": "all rerank scores zero: genuine tie or swallowed JSON error"
+    },
+    {
+      "configuration": "window_rerank_on",
+      "id": "q042",
+      "reason": "all rerank scores zero: genuine tie or swallowed JSON error"
+    },
+    {
+      "configuration": "window_rerank_on",
+      "id": "q048",
+      "reason": "zero faithfulness: genuine zero or swallowed JSON error; raw provider response was not saved"
+    },
+    {
+      "configuration": "window_rerank_on",
+      "id": "q049",
+      "reason": "zero faithfulness: genuine zero or swallowed JSON error; raw provider response was not saved"
+    }
+  ],
+  "faithfulness_verified": false
+}

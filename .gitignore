@@ -1,0 +1,30 @@
+# Secrets and local runtime state
+.env
+.tmp/
+data/*
+!data/billing/
+data/billing/*
+!data/billing/pricing.json
+
+# Evaluation: keep published runs, ignore in-progress artefacts
+eval/results/**/checkpoints/
+eval/results/**/.evaluation.lock
+eval/results/**/*.interrupted-*
+
+# Python
+.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+*.log
+.DS_Store
