@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.main import _question_matrix  # noqa: E402
+from app.main import _question_matrix
 
 RUN = ROOT / "eval/results/20261119T184220545709Z"
 CONFIG = "window_rerank_off"
@@ -91,9 +91,13 @@ def sse(row: dict) -> str:
     )
     events.append(("status", {"stage": "generation"}))
     answer = row["generated_answer"]
-    events += [("delta", {"text": answer[i : i + 40]}) for i in range(0, len(answer), 40)]
+    events += [
+        ("delta", {"text": answer[i : i + 40]}) for i in range(0, len(answer), 40)
+    ]
     events.append(("done", {"request_id": "recorded-eval-replay"}))
-    return "".join(f"event: {e}\ndata: {json.dumps(d, ensure_ascii=False)}\n\n" for e, d in events)
+    return "".join(
+        f"event: {e}\ndata: {json.dumps(d, ensure_ascii=False)}\n\n" for e, d in events
+    )
 
 
 def main(out: Path) -> None:
@@ -114,7 +118,9 @@ def main(out: Path) -> None:
         "questions": _question_matrix(RUN, 0.0),
         "question": rows[MAIN_QUESTION]["question"],
         "stream": sse(rows[MAIN_QUESTION]),
-        "history": [conversation(rows[qid], i * 3_600_000) for i, qid in enumerate(HISTORY, 1)],
+        "history": [
+            conversation(rows[qid], i * 3_600_000) for i, qid in enumerate(HISTORY, 1)
+        ],
     }
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
@@ -122,4 +128,8 @@ def main(out: Path) -> None:
 
 
 if __name__ == "__main__":
-    main(Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / ".tmp/screenshot-fixtures.json")
+    main(
+        Path(sys.argv[1])
+        if len(sys.argv) > 1
+        else ROOT / ".tmp/screenshot-fixtures.json"
+    )

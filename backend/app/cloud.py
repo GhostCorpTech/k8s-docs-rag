@@ -224,10 +224,11 @@ class CloudModels:
         """Yield content deltas; log usage/latency once the stream is exhausted.
 
         Reasoning deltas (``reasoning_content``) are not forwarded to the user.
-        ``stream_options`` is deliberately not sent: several OpenAI-compatible
-        routers reject it with HTTP 400. Usage is logged when the provider sends it.
+        ``stream_options`` is deliberately not sent: the router used for the benchmark
+        rejects it with HTTP 400 (docs/EVALUATION.md §11). Usage is logged when the
+        provider sends it, which that router does in the final chunk.
         """
-        rates, request_info, started = self._before_request(operation, kwargs)
+        rates, request_info, started = self._before_request(operation, {**kwargs, "stream": True})
         parts: list[str] = []
         usage, finish_reason, first_token = None, None, None
         try:

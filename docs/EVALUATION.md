@@ -1,6 +1,6 @@
 # Evaluation report
 
-Run `20261119T184220545709Z` · 19 Nov 2026 · [raw results](../eval/results/20261119T184220545709Z) ·
+Run `20261119T184220545709Z` · 19 Nov 2026 (live follow-up checks: 25 Nov, [section 11](#11-live-checks-after-release)) · [raw results](../eval/results/20261119T184220545709Z) ·
 [derived tables](results) · reproduce with `python scripts/analyze_eval.py`
 
 ## 1. Question
@@ -97,7 +97,7 @@ Full machine-readable output: [`docs/results/analysis.json`](results/analysis.js
 1. **Window chunking is the single most effective choice.** It lifts MRR@10 from 0.660 to 0.793 (p = 0.003) and is the only configuration that has the gold page in the top 10 for all 50 questions. Heading chunks follow the author's structure, but many Kubernetes sections are either very short (a definition without context) or very long (split arbitrarily anyway); overlapping windows give the embedding model more consistent units.
 2. **The LLM reranker is not a free win.** On heading chunks it pulls the first relevant chunk up for 16 questions and down for 10 (net +0.096, not significant). On window chunks the effect is slightly negative. It adds a median 17.1 s per query and consumed 39 % of all input tokens of the benchmark. Default: **off**, available as a toggle.
 3. **Faithfulness is high and flat (0.955–0.976).** With the right page almost always in context, answer groundedness is limited by the generator, not by retrieval. The differences between configurations are within noise.
-4. **Citation markers are the weak spot of the generator**, not of retrieval — see below.
+4. **Citation markers were the weak spot of the generator**, not of retrieval — see below and the follow-up in [section 11](#11-live-checks-after-release).
 
 ### Citation compliance
 
@@ -110,7 +110,7 @@ The answer prompt requires a `[n]` marker for every verifiable claim.
 | Window · no rerank | 34 / 50 | 0 | 1,466 chars |
 | Window · LLM rerank | 31 / 50 | 0 | 1,516 chars |
 
-The model never invents a source number, but it frequently answers in a structured "article" format without markers, even when every claim is grounded (faithfulness 1.0). The UI always shows the source list, so the user can still verify. Candidate fixes — not yet evaluated, so not claimed: a stricter system prompt with a format example, a post-check that requests a rewrite when markers are missing, or constrained output.
+The model never invents a source number, but it frequently answers in a structured "article" format without markers, even when every claim is grounded (faithfulness 1.0). The UI always shows the source list, so the user can still verify. **Follow-up (25 Nov):** a controlled re-run showed that the same prompt now yields markers in 50/50 answers — the gap was provider-side drift, not the prompt ([section 11.1](#111-citation-markers-prompt-or-provider)).
 
 ## 5. Error analysis
 
@@ -188,3 +188,57 @@ The GPU worker was a one-off accelerator for a Windows machine and is not part o
 - One gold page per question for most questions (see error analysis).
 - Answer correctness against the reference answers was not scored; only groundedness was.
 - The answer prompt was later generalised from "answer in Russian" to "answer in the language of the question"; for this Russian dataset the instruction is equivalent, but the change is noted for completeness.
+
+## 11. Live checks after release
+
+25 Nov 2026 · same model (`glm-5.3-flash`) through the same OpenAI-compatible router · budget-capped harness
+[`scripts/experiments/live_checks.py`](../scripts/experiments/live_checks.py) · raw logs and summaries in
+[`eval/experiments/`](../eval/experiments) · total metered cost **$0.061** (245 calls; one answer call timed out and was retried — its cost, if any, is unknown; the single `stream_options` probe was not metered).
+
+### 11.1 Citation markers: prompt or provider?
+
+Section 4 found `[n]` markers in only 34 of 50 answers. Before changing the prompt, the question was whether a prompt change would actually be the cause of any improvement. Design: regenerate answers for all 50 questions from the **recorded** answer contexts of `window_rerank_off` (so retrieval is held fixed), with
+
+- **control_v2** — the exact benchmark prompt, run again today;
+- **v3** — a prompt with explicit citation rules (a marker after every factual sentence or list item, an example, no markers inside code, "an answer without citations is not acceptable");
+
+and score every answer with the same faithfulness judge.
+
+| Variant | Answers with `[n]` | Lines with a marker¹ | Faithfulness | Median length |
+|---|---:|---:|---:|---:|
+| Benchmark answers (19 Nov, recorded) | 34 / 50 | 0.57 <sub>[0.45–0.69]</sub> | 0.975 <sub>[0.96–0.99]</sub> | 1,466 chars |
+| control_v2 — same prompt, 25 Nov | **50 / 50** | 0.86 <sub>[0.81–0.91]</sub> | 0.987 <sub>[0.98–1.00]</sub> | 1,559 chars |
+| v3 — strict citation prompt, 25 Nov | **50 / 50** | 0.88 <sub>[0.83–0.93]</sub> | 0.988 <sub>[0.98–1.00]</sub> | 1,450 chars |
+
+<sub>¹ Share of prose lines (paragraphs and list items, excluding headings, code and table rules) that carry at least one marker. 0 markers pointed to a non-existent source in every variant. Paired v3 − control: lines with a marker +0.018 [−0.04, +0.07], p = 0.56; faithfulness +0.001 [−0.01, +0.01], p = 1.0.</sub>
+
+**Conclusion.** The same prompt that produced 34/50 cited answers on 19 Nov produced 50/50 on 25 Nov, with higher faithfulness. The gap was a change in the provider-side model behaviour, not a prompt problem, and the stricter prompt adds nothing measurable on top. Without the control arm the improvement would have been wrongly credited to v3. The production prompt is therefore left unchanged; the planned "rewrite if no markers" fallback was not needed and was not run.
+
+Practical lesson: hosted models drift under the same name. Re-running a small control set before attributing a change to a prompt costs cents ($0.03 here) and avoids a false conclusion.
+
+### 11.2 Intermittent HTTP 400
+
+The owner saw occasional HTTP 400 errors in the chat — with and without the reranker, not reproducible on demand. 44 diagnostic calls replayed every request shape the application sends, without retries:
+
+| Scenario | Calls | HTTP 400 |
+|---|---:|---:|
+| Query translation, **identical request ×20** | 20 | 0 |
+| Query translation, 4,000-character question | 2 | 0 |
+| Follow-up rewrite with conversation history | 3 | 0 |
+| LLM rerank, 20 candidates (~12k input tokens) | 5 | 0 |
+| Streaming answer, 8 sources | 8 | 0 |
+| Streaming answer with history | 2 | 0 |
+| Blocking answer, 8 sources | 3 | 0 |
+| Streaming with `stream_options: {include_usage: true}` | 1 | **1** — `{"code": 400, "message": "invalid request"}` |
+
+Together with the citation experiment (201 calls) and the benchmark (512 calls), **0 of 756 application-shaped calls returned HTTP 400**. The only reproducible 400 is `stream_options`, which the application never sends (the router reports streaming usage in the final chunk without it — verified for all 10 streamed answers).
+
+What this does and does not show: the cause of the owner's intermittent 400s is **not established**. Identical requests succeeding 20 times in a row argue against a malformed request from the application; the remaining candidates are provider-side (transient upstream errors surfaced as 400 by the router, or upstream content moderation of specific wordings). What changed to make it manageable:
+
+- a failing reranker or translation no longer fails the chat — it degrades to hybrid order / the original query and says so;
+- every error shows the stage, the model and a diagnostic ID that matches a log line with the provider's error code and message (no question text), so the next occurrence can be attributed;
+- the UI offers *Retry* on a failed answer.
+
+### 11.3 Latency, for reference
+
+Median latency on 25 Nov was lower than during the benchmark: answer 18.4 s (p90 35.8 s), judge 7.1 s (p90 20.5 s); streamed answers in the diagnostics showed the first token after ~2 s. Provider latency varies by day; the benchmark numbers in section 6 are kept as measured.

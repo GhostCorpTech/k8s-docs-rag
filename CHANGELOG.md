@@ -4,6 +4,12 @@
 
 Portfolio release.
 
+### Live checks (25 Nov, $0.061 metered)
+- Citation A/B on recorded contexts with a control arm: the unchanged prompt now cites in 50/50 answers (was 34/50 in the benchmark); a stricter prompt brings no significant gain, so the prompt is unchanged. Recorded in `eval/experiments/citation-prompt/`.
+- HTTP 400 diagnostics: 0/43 application-shaped calls failed, incl. 20 identical requests; `stream_options` reproducibly returns 400 and is never sent. Recorded in `eval/experiments/http400-diagnostics/`.
+- Budget-capped experiment harness `scripts/experiments/live_checks.py`.
+- Model prices are looked up per model with a `*` provider entry; the router endpoint is no longer stored in the repository (redacted to a neutral label in recorded logs).
+
 ### Added
 - Streaming chat endpoint `POST /api/chat/stream` (Server-Sent Events): sources before tokens, stop/abort, truncation detection; reasoning deltas are never forwarded.
 - Follow-up questions: conversation history (last 6 messages) and an LLM rewrite of the follow-up into a standalone retrieval query.

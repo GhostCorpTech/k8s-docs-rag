@@ -5,7 +5,7 @@ This product's source code is licensed under the Apache License, Version 2.0 (se
 
 Third-party content
 -------------------
-eval/results/ and docs/assets/screenshots/ contain excerpts of the Kubernetes
+eval/ and docs/assets/screenshots/ contain excerpts of the Kubernetes
 documentation (https://github.com/kubernetes/website, snapshot commit
 a96b3ebd15296afc96819e6e5f8a90bcff00b828), Copyright The Kubernetes Authors,
 licensed under Creative Commons Attribution 4.0 International (see

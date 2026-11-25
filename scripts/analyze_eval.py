@@ -269,7 +269,8 @@ def operations(path: Path) -> dict:
             if record.get("token_cost_usd") is not None:
                 cost += record["token_cost_usd"]
             else:  # the first 77 records were metered before the tariff path was fixed
-                rates = pricing["providers"][record["provider"].rstrip("/")][
+                providers = pricing["providers"]
+                rates = providers.get(record["provider"].rstrip("/"), providers["*"])[
                     record["model"]
                 ]
                 cached = (usage.get("prompt_tokens_details") or {}).get(

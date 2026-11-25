@@ -150,6 +150,13 @@ The reranker moves many questions in *both* directions: it fixes some poor headi
 
 <sub>Latency is the provider's wall-clock time for a reasoning model (`glm-5.3-flash`), measured on 144/200/95 calls that logged durations. Cost is computed from returned `usage` and the published tariff; the 11 failed reranker attempts (connection errors, retried) returned no usage, so their cost — if any — is unknown and not counted as zero.</sub>
 
+### Follow-up live checks (25 Nov)
+
+Two budget-capped experiments against the same model, total **$0.061** ([details](docs/EVALUATION.md#11-live-checks-after-release)):
+
+- **Citation markers.** The benchmark found `[n]` markers in only 34/50 answers. A controlled re-run on the recorded contexts showed the *unchanged* prompt now cites in **50/50** answers, and a stricter prompt adds nothing measurable (+0.018 line coverage, p = 0.56). The gap was provider-side model drift — the control arm prevented crediting a prompt change for it.
+- **Intermittent HTTP 400.** 0 of 756 application-shaped calls (incl. 20 identical requests in a row) returned 400; the only reproducible 400 comes from `stream_options`, which the app never sends. The root cause of the occasional 400s seen in the chat is not established; the chat now degrades instead of failing on reranker/translation errors and every error carries a diagnostic ID.
+
 ### The audit: what changed between v1 and v4
 
 The first version reported Recall@5 = 0.62–0.92. A code and data audit found that the numbers were partly wrong and partly flattered by the reranker:
@@ -278,7 +285,7 @@ docs/              architecture, evaluation report, charts, generated tables
 
 - **50 questions** is enough to separate chunking strategies (p = 0.003) but not to resolve small effects; most CIs are ±0.05–0.10.
 - **Faithfulness is an LLM judgment of groundedness**, by the same model family that generated the answers. It does not measure completeness or correctness against the reference answer.
-- **Citation discipline depends on the model:** 24–34 of 50 answers per configuration contain `[n]` markers (none point to a non-existent source). The UI always lists the sources regardless.
+- **Hosted models drift:** in the benchmark 24–34 of 50 answers per configuration carried `[n]` markers; a re-run six days later with the same prompt gave 50/50. Numbers measured against a hosted model are a snapshot.
 - **Single gold page per question** is conservative: most "late" hits are relevant tutorials, task pages or glossary entries rather than misses (see [error analysis](docs/EVALUATION.md#5-error-analysis)).
 - Only one LLM provider was evaluated; a second-provider comparison is supported by the harness but was not run.
 

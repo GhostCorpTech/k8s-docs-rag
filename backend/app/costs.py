@@ -6,8 +6,10 @@ from pathlib import Path
 def lookup_rates(path: Path, provider: str, model: str) -> dict | None:
     if not path.exists():
         return None
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    return payload.get("providers", {}).get(provider.rstrip("/"), {}).get(model)
+    providers = json.loads(path.read_text(encoding="utf-8")).get("providers", {})
+    # An exact provider entry wins; "*" holds model prices that apply to any endpoint.
+    exact = providers.get(provider.rstrip("/"), {}).get(model)
+    return exact if exact is not None else providers.get("*", {}).get(model)
 
 
 def token_cost(usage: dict | None, rates: dict | None) -> float | None:

@@ -1,9 +1,10 @@
 {
   "checked_at": "2026-11-19",
-  "source": "openai-compatible-router",
+  "source": "Price list of the OpenAI-compatible router used for the benchmark",
   "currency": "USD",
+  "note": "Keys under 'providers' are base URLs; '*' applies to any endpoint. Add your provider's prices before running a paid evaluation.",
   "providers": {
-    "openai-compatible-router": {
+    "*": {
       "glm-5.3-flash": {
         "input_per_million": 0.039,
         "output_per_million": 0.14,

@@ -84,3 +84,26 @@ def test_missing_rate_snapshot_can_be_reconciled_without_changing_logs(tmp_path:
     assert summary["reconciled_at_configured_tariff_attempts"] == 1
     assert summary["known_token_cost_usd"] == pytest.approx((1000 * 0.039 + 100 * 0.14) / 1_000_000)
     assert log.read_text(encoding="utf-8") == original
+
+
+def test_wildcard_provider_prices_apply_to_any_endpoint(tmp_path) -> None:
+    import json
+
+    from app.costs import lookup_rates
+
+    path = tmp_path / "pricing.json"
+    path.write_text(
+        json.dumps(
+            {
+                "providers": {
+                    "*": {"m": {"input_per_million": 1, "output_per_million": 2}},
+                    "https://exact.test/v1": {
+                        "m": {"input_per_million": 5, "output_per_million": 6}
+                    },
+                }
+            }
+        )
+    )
+    assert lookup_rates(path, "https://any.test/v1", "m")["input_per_million"] == 1
+    assert lookup_rates(path, "https://exact.test/v1/", "m")["input_per_million"] == 5
+    assert lookup_rates(path, "https://any.test/v1", "unknown") is None

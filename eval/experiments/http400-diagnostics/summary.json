@@ -1,0 +1,48 @@
+{
+  "started_at": "2026-11-25T12:32:59.243409+00:00",
+  "finished_at": "2026-11-25T12:35:11.824318+00:00",
+  "model": "glm-5.3-flash",
+  "metered_cost_usd_upper_bound": 0.005530874999999999,
+  "scenarios": {
+    "translation_identical": {
+      "attempts": 20,
+      "ok": 20
+    },
+    "translation_4000_chars": {
+      "attempts": 2,
+      "ok": 2
+    },
+    "condense_with_history": {
+      "attempts": 3,
+      "ok": 3
+    },
+    "rerank_20_candidates": {
+      "attempts": 5,
+      "ok": 5
+    },
+    "answer_stream": {
+      "attempts": 8,
+      "ok": 8
+    },
+    "answer_blocking": {
+      "attempts": 3,
+      "ok": 3
+    },
+    "answer_stream_with_history": {
+      "attempts": 2,
+      "ok": 2
+    },
+    "stream_options_include_usage": {
+      "attempts": 1,
+      "ok": 0,
+      "errors": [
+        {
+          "error_type": "BadRequestError",
+          "http_status": 400,
+          "provider_error": null,
+          "message": "Error code: 400 - {'error': {'code': 400, 'message': 'invalid request', 'type': 'invalid_request_error'}}"
+        }
+      ]
+    }
+  }
+}

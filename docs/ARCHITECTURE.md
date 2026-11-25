@@ -122,7 +122,7 @@ Evaluation must never let a provider hiccup silently change a metric; a user wou
 - **Context:** the top-k sources, each as `SOURCE [n]` with title, section, URL and content, cut at `MAX_CONTEXT_CHARS` (30,000) at source boundaries.
 - **Prompt:** answer only from the sources, in the language of the question, cite every verifiable claim as `[n]`, say so when the sources are insufficient, never invent commands or links, and treat source text as data rather than instructions (prompt-injection guard).
 - **Follow-ups:** the last 6 messages are sent; with history, a separate call rewrites the question into a standalone query before retrieval, while the answer still sees the conversation.
-- **Streaming:** `POST /api/chat/stream` emits `status` → `sources` → `delta`… → `done`. Sources arrive before the first token. Reasoning deltas are never forwarded. `stream_options` is deliberately not sent because several OpenAI-compatible routers reject it with HTTP 400. A completion cut off by the token limit is reported as an error, not shown as a full answer.
+- **Streaming:** `POST /api/chat/stream` emits `status` → `sources` → `delta`… → `done`. Sources arrive before the first token. Reasoning deltas are never forwarded. `stream_options` is deliberately not sent: the router used for the benchmark rejects it with HTTP 400 `invalid request` (measured, see [EVALUATION.md §11](EVALUATION.md#11-live-checks-after-release)) and reports `usage` in the final chunk anyway. A completion cut off by the token limit is reported as an error, not shown as a full answer.
 
 ## 6. Observability and cost control
 

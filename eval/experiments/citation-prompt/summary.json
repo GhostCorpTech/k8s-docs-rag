@@ -1,0 +1,99 @@
+{
+  "source_contexts": "20261119T184220545709Z/window_rerank_off (recorded answer_context)",
+  "model": "glm-5.3-flash",
+  "variants": {
+    "recorded_v2 (benchmark)": {
+      "n": 50,
+      "answers_with_citations": 34,
+      "citation_rate": 0.68,
+      "citation_rate_ci95": [
+        0.54,
+        0.8
+      ],
+      "unit_coverage": 0.5683744588744589,
+      "unit_coverage_ci95": [
+        0.4479486471861472,
+        0.6864381493506491
+      ],
+      "invalid_markers": 0,
+      "faithfulness": 0.975,
+      "faithfulness_ci95": [
+        0.959,
+        0.9890000000000001
+      ],
+      "median_chars": 1465.5
+    },
+    "control_v2": {
+      "n": 50,
+      "answers_with_citations": 50,
+      "citation_rate": 1.0,
+      "citation_rate_ci95": [
+        1.0,
+        1.0
+      ],
+      "unit_coverage": 0.8621804306804307,
+      "unit_coverage_ci95": [
+        0.8135386377511377,
+        0.9065255452880454
+      ],
+      "invalid_markers": 0,
+      "faithfulness": 0.987,
+      "faithfulness_ci95": [
+        0.978,
+        0.995
+      ],
+      "median_chars": 1559.0
+    },
+    "v3": {
+      "n": 50,
+      "answers_with_citations": 50,
+      "citation_rate": 1.0,
+      "citation_rate_ci95": [
+        1.0,
+        1.0
+      ],
+      "unit_coverage": 0.879995670995671,
+      "unit_coverage_ci95": [
+        0.831823971861472,
+        0.9250873917748919
+      ],
+      "invalid_markers": 0,
+      "faithfulness": 0.988,
+      "faithfulness_ci95": [
+        0.977,
+        0.996
+      ],
+      "median_chars": 1449.5
+    }
+  },
+  "v3_vs_control_v2": {
+    "has_citation": {
+      "mean_diff": 0.0,
+      "ci95": [
+        0.0,
+        0.0
+      ],
+      "p_value": 1.0,
+      "n": 50
+    },
+    "unit_coverage": {
+      "mean_diff": 0.017815240315240306,
+      "ci95": [
+        -0.04062104978354978,
+        0.07453432539682538
+      ],
+      "p_value": 0.5611438856114389,
+      "n": 50
+    },
+    "faithfulness": {
+      "mean_diff": 0.0009999999999999987,
+      "ci95": [
+        -0.009999999999999998,
+        0.012
+      ],
+      "p_value": 1.0,
+      "n": 50
+    }
+  },
+  "metered_cost_usd_upper_bound": 0.05952113499999998
+}
