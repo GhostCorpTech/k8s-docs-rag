@@ -116,3 +116,66 @@ def test_failed_request_has_explicitly_unknown_charge(tmp_path: Path) -> None:
     record = json.loads(cloud.settings.api_response_log_path.read_text(encoding="utf-8"))
     assert record["status"] == "error"
     assert record["token_cost_usd"] is None
+
+
+def _chunk(content=None, finish=None, usage=None, reasoning=None):
+    delta = SimpleNamespace(content=content, reasoning_content=reasoning)
+    return SimpleNamespace(
+        choices=[SimpleNamespace(delta=delta, finish_reason=finish)], usage=usage
+    )
+
+
+def test_stream_forwards_content_but_not_reasoning_and_logs_usage(tmp_path: Path) -> None:
+    cloud = cloud_with_output("")
+    cloud.settings.api_response_log_path = tmp_path / "trace.jsonl"
+    chunks = [
+        _chunk(reasoning="thinking..."),
+        _chunk(content="Pod "),
+        _chunk(content="is [1]."),
+        _chunk(finish="stop"),
+        SimpleNamespace(choices=[], usage={"prompt_tokens": 10, "completion_tokens": 3}),
+    ]
+    seen = {}
+
+    def create(**kwargs):
+        seen.update(kwargs)
+        return iter(chunks)
+
+    cloud.chat_client.chat.completions.create = create
+    hits = [{"title": "T", "heading": "H", "url": "https://kubernetes.io/docs/", "content": "c"}]
+    assert "".join(cloud.answer_stream("Что такое Pod?", hits)) == "Pod is [1]."
+    assert seen["stream"] is True and "stream_options" not in seen
+    record = json.loads(cloud.settings.api_response_log_path.read_text(encoding="utf-8"))
+    assert record["usage"]["completion_tokens"] == 3
+    assert record["choices"][0] == {
+        "content": "Pod is [1].",
+        "content_chars": 11,
+        "finish_reason": "stop",
+    }
+    assert record["first_token_seconds"] >= 0
+
+
+def test_truncated_stream_is_an_error() -> None:
+    cloud = cloud_with_output("")
+    cloud.chat_client.chat.completions.create = lambda **kwargs: iter(
+        [_chunk(content="partial"), _chunk(finish="length")]
+    )
+    hits = [{"title": "T", "heading": "H", "url": "https://kubernetes.io/docs/", "content": "c"}]
+    with pytest.raises(CloudOutputError):
+        list(cloud.answer_stream("Q", hits))
+
+
+def test_history_is_passed_to_answer_and_capped() -> None:
+    cloud = cloud_with_output("answer")
+    history = [{"role": "user", "content": f"turn {i}"} for i in range(10)]
+    hits = [{"title": "T", "heading": "H", "url": "https://kubernetes.io/docs/", "content": "c"}]
+    messages = cloud._answer_messages("Q", hits, history)
+    assert messages[0]["role"] == "system" and "языке вопроса" in messages[0]["content"]
+    assert [m["content"] for m in messages[1:-1]] == [f"turn {i}" for i in range(4, 10)]
+    assert messages[-1]["content"].startswith("Вопрос: Q")
+
+
+def test_standalone_question_without_history_makes_no_call() -> None:
+    cloud = cloud_with_output("unused")
+    cloud.chat_client = None
+    assert CloudModels.standalone_question.__wrapped__(cloud, "Q", []) == "Q"

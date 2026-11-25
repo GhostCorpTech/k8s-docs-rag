@@ -39,7 +39,7 @@ def test_provider_400_has_stage_and_redacts_key(tmp_path: Path) -> None:
             temperature=0,
         )
     detail = _request_error(error, cloud).detail
-    assert "HTTP 400" in detail and "перевода запроса" in detail
+    assert "HTTP 400" in detail and "query translation" in detail
     assert "test-request" in detail
     text = (tmp_path / "trace.jsonl").read_text(encoding="utf-8")
     assert key not in detail and key not in text and "Private question" not in text
@@ -72,9 +72,7 @@ def test_live_success_log_keeps_usage_not_content(tmp_path: Path) -> None:
     assert record["choices"][0]["content"] is None
 
 
-def test_chat_error_explains_reranker_and_returns_diagnostic_id(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_chat_answer_error_returns_stage_and_diagnostic_id(tmp_path: Path, monkeypatch) -> None:
     settings = Settings(_env_file=None, live_api_log_path=tmp_path / "live.jsonl")
     monkeypatch.setattr("app.main.get_settings", lambda: settings)
 
@@ -82,17 +80,18 @@ def test_chat_error_explains_reranker_and_returns_diagnostic_id(
         def __init__(self, settings):
             pass
 
-        def search(self, *args, **kwargs):
+        def search_with_trace(self, *args, **kwargs):
             response = httpx.Response(400, request=httpx.Request("POST", "https://router.test"))
             error = BadRequestError("invalid request", response=response, body={})
-            error.rag_operation = "rerank"
+            error.rag_operation = "answer"
             error.rag_model = "test-model"
             error.rag_provider_error = {"message": "invalid request"}
             raise error
 
     monkeypatch.setattr("app.main.Retriever", FailingRetriever)
+    monkeypatch.setattr("app.main._require_index", lambda *args: None)
     response = TestClient(app).post("/api/chat", json={"question": "Question", "rerank": True})
     assert response.status_code == 503
     detail = response.json()["detail"]
-    assert "reranker" in detail and "выключить" in detail
-    assert "ID диагностики" in detail
+    assert "HTTP 400" in detail and "answer generation" in detail and "test-model" in detail
+    assert "Diagnostic ID" in detail
