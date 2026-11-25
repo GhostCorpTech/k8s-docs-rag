@@ -1,11 +1,14 @@
 FROM node:22-alpine AS build
 WORKDIR /app
-COPY package.json package-lock.json tsconfig.json index.html ./
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY tsconfig.json vite.config.ts index.html ./
+COPY public ./public
 COPY src ./src
-ARG VITE_API_URL=http://localhost:8088
+# Empty = same origin (nginx proxies /api). Set only if the API lives elsewhere.
+ARG VITE_API_URL=
 ENV VITE_API_URL=$VITE_API_URL
-RUN npm ci && npm run build
-
+RUN npm run build
 
 FROM nginx:1.27-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
