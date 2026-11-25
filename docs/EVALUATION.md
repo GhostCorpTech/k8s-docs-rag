@@ -266,10 +266,10 @@ A RAG system is only trustworthy if it says "not in the documentation" instead o
 | Category | Example | n | Declined | Corrected the premise | Fabricated |
 |---|---|---:|---:|---:|---:|
 | Out of scope | streaming replication in PostgreSQL 16; GitHub Actions for Python | 7 | 7 | 0 | **0** |
-| Non-existent feature | `kubectl --auto-heal-nodes`, `spec.autoRollbackOnFailure`, "built-in KubeMesh" | 8 | 3 | 5 | **0** |
+| Non-existent feature | `kubectl --auto-heal-nodes`, `spec.autoRollbackOnFailure`, "built-in KubeMesh" | 8 | 4 | 4 | **0** |
 | Removed API | dockershim in 1.30, PodSecurityPolicy in 1.29, Ingress `extensions/v1beta1` | 3 | 0 | 3 | **0** |
 | Vendor-specific fact | etcd version in EKS 1.29, default max pods in AKS kubenet | 2 | 2 | 0 | **0** |
-| **Total** | | **20** | **12** | **8** | **0** |
+| **Total** | | **20** | **13** | **7** | **0** |
 
 <sub>Labels from a manual review of all 20 answers. An LLM judge (same model) agreed on "no fabrication" in 20/20 and differed only on declined vs corrected for five non-existent-feature questions, where the answer both says the sources lack the item and explains the real mechanism (e.g. Kubernetes does not roll back Deployments automatically; StatefulSet updates always recreate Pods).</sub>
 
