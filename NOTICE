@@ -1,0 +1,16 @@
+Kubernetes Docs Assistant
+Copyright 2026 GhostCorp
+
+This product's source code is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party content
+-------------------
+eval/results/ and docs/assets/screenshots/ contain excerpts of the Kubernetes
+documentation (https://github.com/kubernetes/website, snapshot commit
+a96b3ebd15296afc96819e6e5f8a90bcff00b828), Copyright The Kubernetes Authors,
+licensed under Creative Commons Attribution 4.0 International (see
+LICENSES/CC-BY-4.0.txt). Excerpts were normalised from Markdown and split into
+chunks; each excerpt keeps the URL of its source page.
+
+The evaluation questions and reference answers in eval/questions.jsonl were
+written for this project and are covered by the Apache License, Version 2.0.
