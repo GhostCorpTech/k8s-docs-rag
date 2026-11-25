@@ -10,21 +10,26 @@ and a 200-run evaluation with confidence intervals that decided the default conf
 [![FastAPI](https://img.shields.io/badge/FastAPI-SSE%20streaming-009688?logo=fastapi&logoColor=white)](backend/app/main.py)
 [![React 19](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](frontend/package.json)
 [![Qdrant](https://img.shields.io/badge/Qdrant-1.13-DC244C)](docker-compose.yml)
-[![Tests](https://img.shields.io/badge/tests-81%20passed-2ea44f)](backend/tests)
+[![Tests](https://img.shields.io/badge/tests-87%20passed-2ea44f)](backend/tests)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **English** · [Русский](README.ru.md)
 
 </div>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/screenshots/chat-dark.png">
-  <img alt="Chat: a Russian question answered from English Kubernetes docs with inline citations and source cards" src="docs/assets/screenshots/chat-light.png">
-</picture>
+<p align="center">
+  <img alt="Demo: a Russian question is answered from English Kubernetes docs; sources arrive first, the answer streams with citations, then the retrieval details panel opens" src="docs/assets/demo.gif" width="100%">
+</p>
 
-<sub>Screenshot replays a recorded answer from the benchmark run through the real UI (see [how](#screenshots)).</sub>
+<sub>Recorded on the real stack — restored index, local embeddings, live LLM — and sped up 1.5×. Real timings for this answer: query embedding 65 ms, vector search 20 ms, BM25 132 ms, first token 2.3 s.</sub>
 
 ---
+
+> **Reviewing this repo in a few minutes?**
+> Decisions and their evidence → [evaluation report](docs/EVALUATION.md) and [architecture decision records](docs/adr/) ·
+> the core of retrieval → [`retrieval.py`](backend/app/retrieval.py) (fusion, degradation) and [`token_budget.py`](backend/app/token_budget.py) (token-exact chunking) ·
+> the evaluation harness → [`evaluation.py`](backend/app/evaluation.py) · raw per-question results → [`eval/results/`](eval/results/20261119T184220545709Z) ·
+> a non-technical summary → [case study](docs/CASE_STUDY.md).
 
 ## Results at a glance
 
@@ -43,6 +48,7 @@ and a 200-run evaluation with confidence intervals that decided the default conf
 1. **Chunking matters more than reranking.** Sliding-window chunks beat heading-based chunks on MRR@10 by **+0.133** (95% CI +0.05…+0.22, paired permutation test p = 0.003).
 2. **The LLM reranker did not pay for itself.** On window chunks it changed MRR@10 by −0.047 (p = 0.30); on heading chunks +0.096 (p = 0.08, not significant). It adds **17 s median latency** and **35 % of the token bill**. It is therefore **off by default** and available as a toggle.
 3. **Fixing the pipeline beat adding components.** An audit of the first version found truncated embeddings, dropped code samples and an inflated recall metric. After the fixes, the no-rerank baseline moved from MRR@10 0.35 → 0.79 — it now outperforms the old *reranked* pipeline.
+4. **It knows what it does not know.** On 20 questions the docs cannot answer — invented flags, removed APIs, other products — it fabricated **0** answers, and it refused **0** of the 200 answerable benchmark questions.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/charts/quality-dark.svg">
@@ -150,12 +156,19 @@ The reranker moves many questions in *both* directions: it fixes some poor headi
 
 <sub>Latency is the provider's wall-clock time for a reasoning model (`glm-5.3-flash`), measured on 144/200/95 calls that logged durations. Cost is computed from returned `usage` and the published tariff; the 11 failed reranker attempts (connection errors, retried) returned no usage, so their cost — if any — is unknown and not counted as zero.</sub>
 
-### Follow-up live checks (25 Nov)
+### After release: live checks and two incidents (25 Nov)
 
-Two budget-capped experiments against the same model, total **$0.061** ([details](docs/EVALUATION.md#11-live-checks-after-release)):
+Budget-capped follow-ups against the same model ([details](docs/EVALUATION.md#11-live-checks-after-release)):
 
-- **Citation markers.** The benchmark found `[n]` markers in only 34/50 answers. A controlled re-run on the recorded contexts showed the *unchanged* prompt now cites in **50/50** answers, and a stricter prompt adds nothing measurable (+0.018 line coverage, p = 0.56). The gap was provider-side model drift — the control arm prevented crediting a prompt change for it.
-- **Intermittent HTTP 400.** 0 of 756 application-shaped calls (incl. 20 identical requests in a row) returned 400; the only reproducible 400 comes from `stream_options`, which the app never sends. The root cause of the occasional 400s seen in the chat is not established; the chat now degrades instead of failing on reranker/translation errors and every error carries a diagnostic ID.
+| Check | Result |
+|---|---|
+| **Retrieval ablations** (window, 50 questions, $0) | Hybrid beats dense-only by +0.127 MRR@10 (p = 0.019) and BM25-only by +0.128 (p = 0.004); BM25 on the untranslated Russian question drops to 0.443. On heading chunks fusion adds nothing over dense-only (0.652 vs 0.659) — the gain comes from window chunks + hybrid together. RRF k and channel weights barely matter — nothing is tuned to 50 questions. ([ADR 0001](docs/adr/0001-hybrid-retrieval-with-rrf.md)) |
+| **Unanswerable questions** (20: out of scope, invented flags/resources, removed APIs, vendor facts) | **0 fabricated** — 12 declined, 8 corrected the premise (e.g. "dockershim was removed in 1.24; use a CRI runtime such as containerd or CRI-O"). Conversely, 0 of 200 answerable benchmark questions were refused. |
+| **Citation markers** | The *unchanged* prompt now cites in 50/50 answers (34/50 in the benchmark); a stricter prompt adds nothing measurable (p = 0.56). The gap was provider-side model drift — a control arm prevented crediting the prompt. |
+
+**Incident 1 — the intermittent HTTP 400.** Reproduced live: for about an hour, with short healthy windows, the model's upstream rejected most fresh requests — even "Reply with the single word: ok" — with `400 invalid request`, through two different routers (one labelled it `upstream_rejected`); identical requests had all succeeded that morning. The application was not the cause. It now degrades instead of failing: a failed or slow (> 8 s) query translation falls back to BM25 on the original wording, a failed reranker keeps hybrid order, and an answer-stage failure shows its stage and a diagnostic ID with a retry button. During the outage all 10 test questions were still answered in one run and 7 of 10 in another (the 3 failures were at the answer stage, where no honest fallback exists).
+
+**Incident 2 — a backup full of zeros.** A packaged index restored with every one of its 32,088 vectors equal to zero, while IDs and texts were intact. The original Qdrant had stored vectors through memory-mapped files on a Windows bind mount; it served correct vectors from RAM (the benchmark's dense scores are a healthy 0.80–0.91) while the files on disk were not. The earlier restore check compared zeros with zeros and passed. Fixes: Qdrant now uses a named volume; `verify-index` checks vector norms and re-embeds a random sample against the stored text; `repair-vectors` rebuilt all vectors from the stored chunk text without re-chunking. The repaired index reproduces the benchmark exactly: **50/50 identical top-10 lists**. ([ADR 0006](docs/adr/0006-qdrant-named-volume.md))
 
 ### The audit: what changed between v1 and v4
 
@@ -191,7 +204,7 @@ The first version reported Recall@5 = 0.62–0.92. A code and data audit found t
 
 </details>
 
-The screenshots are produced by [`scripts/screenshots`](scripts/screenshots): it takes recorded answers, sources and scores from the benchmark run and replays them through the production frontend in Playwright. Nothing in them is mocked except the transport — per-stage timings are left empty because the benchmark did not record them.
+Screenshots and the demo are recorded by [`scripts/screenshots/live_demo.cjs`](scripts/screenshots/live_demo.cjs) against the running stack: one real question is asked, and every theme and layout is captured from that same conversation.
 
 ## Quick start
 
@@ -202,14 +215,25 @@ cp .env.example .env          # set OPENAI_API_KEY, OPENAI_BASE_URL, CHAT_MODEL
 docker compose up -d --build
 ```
 
+**Option A — restore the prebuilt index (minutes).** Download `k8s-docs-index-v4.zip` from the [latest release](../../releases/latest) into `./data`, then:
+
 ```bash
-# Clone kubernetes/website and build both indexes (first run downloads the 1.1 GB E5 model).
+docker compose exec backend python -m app.cli restore-index /app/data/k8s-docs-index-v4.zip
+```
+
+```bash
+docker compose exec backend python -m app.cli verify-index --sample 20   # IDs, vector norms, re-embedding check
+```
+
+The archive holds both Qdrant collections and the SQLite index for `kubernetes/website@a96b3eb` with a SHA-256 manifest; restore refuses a damaged file. To move to the current docs afterwards, `index --sync --strategy both` re-embeds only the pages that changed since that commit.
+
+**Option B — build from source (hours).** Clone the docs and embed all ~32k chunks locally (the first run downloads the 1.1 GB E5 model; ≈ 120–230 chunks/min on a 4–6-core CPU, resumable; `--strategy window` alone halves the time):
+
+```bash
 docker compose exec backend python -m app.cli index --sync --strategy both
 ```
 
 Open **http://localhost:3000** (UI) or **http://localhost:8088/docs** (OpenAPI).
-
-> Full indexing of ~32k chunks on a 6-core CPU takes several hours (≈120 chunks/min); it is resumable. Indexing only the default strategy halves that: `--strategy window`.
 
 ### Everyday commands
 
@@ -218,6 +242,9 @@ docker compose exec backend python -m app.cli index --sync --strategy both  # in
 docker compose exec backend python -m app.cli index --strategy both --dry-run  # show added / changed / deleted pages
 docker compose exec backend python -m app.cli status                         # index state
 docker compose exec backend python -m app.cli validate-chunking              # check every chunk ≤ 512 tokens, offline
+docker compose exec backend python -m app.cli verify-index                   # index vs docs source, SQLite, Qdrant, re-embedding
+docker compose exec backend python -m app.cli repair-vectors                 # re-embed corrupted vectors from stored text
+docker compose exec backend python -m app.cli export-index /app/data/index.zip  # package the index for a release
 docker compose exec backend python -m app.cli evaluate --no-faithfulness     # retrieval-only eval (no generation cost)
 docker compose exec backend python -m app.cli evaluate --with-faithfulness --workers 2  # full eval
 docker compose exec backend python -m app.cli resume-evaluation <run-id>     # continue an interrupted run
@@ -274,10 +301,10 @@ backend/app/
                    per-call usage, cost and latency logging
   evaluation.py    manifest-pinned, resumable, parallel evaluation harness
   main.py          FastAPI app and SSE endpoint
-backend/tests/     81 tests, no network or model download required
+backend/tests/     87 tests (83 offline + 4 against a real Qdrant in CI)
 frontend/src/      React UI: chat, citations, retrieval inspector, evaluation dashboard
 eval/              questions and the full committed benchmark run
-scripts/           offline analysis (CIs, significance, charts) and screenshot replay
+scripts/           offline analysis (CIs, significance, charts), live experiments, demo recording
 docs/              architecture, evaluation report, charts, generated tables
 ```
 
@@ -287,7 +314,7 @@ docs/              architecture, evaluation report, charts, generated tables
 - **Faithfulness is an LLM judgment of groundedness**, by the same model family that generated the answers. It does not measure completeness or correctness against the reference answer.
 - **Hosted models drift:** in the benchmark 24–34 of 50 answers per configuration carried `[n]` markers; a re-run six days later with the same prompt gave 50/50. Numbers measured against a hosted model are a snapshot.
 - **Single gold page per question** is conservative: most "late" hits are relevant tutorials, task pages or glossary entries rather than misses (see [error analysis](docs/EVALUATION.md#5-error-analysis)).
-- Only one LLM provider was evaluated; a second-provider comparison is supported by the harness but was not run.
+- **One model, one upstream.** Both routers available for testing shared the same upstream and failed together during the outage; a production deployment should add an independent second provider for the answer stage.
 
 ## License
 

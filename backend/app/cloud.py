@@ -319,10 +319,10 @@ class CloudModels:
         )
         return [item.embedding for item in sorted(response.data, key=lambda item: item.index)]
 
-    @cloud_retry
-    def lexical_query(self, query: str) -> str:
+    def _translate(self, query: str, timeout: float | None = None) -> str:
         if not re.search(r"[А-Яа-яЁё]", query):
             return query
+        extra = {"timeout": timeout} if timeout is not None else {}
         response = self._complete(
             "translation",
             model=self.settings.chat_model,
@@ -337,11 +337,25 @@ class CloudModels:
                 },
                 {"role": "user", "content": query},
             ],
+            **extra,
         )
         translated = (response.choices[0].message.content or "").strip().strip('"`')
         if not translated:
             raise CloudOutputError("Translation is empty")
         return translated[:1_000]
+
+    @cloud_retry
+    def lexical_query(self, query: str) -> str:
+        """Strict path (evaluation): retried, default client timeout."""
+        return self._translate(query)
+
+    def quick_lexical_query(self, query: str, timeout: float) -> str:
+        """Interactive path: one attempt with a short timeout; the caller degrades on failure.
+
+        Measured on the benchmark router: successful translations take 1.6 s median and
+        5.4 s p90, while failing calls hang for 10-24 s before returning HTTP 400.
+        """
+        return self._translate(query, timeout=timeout)
 
     @cloud_retry
     def rerank(self, query: str, hits: list[dict]) -> list[dict]:

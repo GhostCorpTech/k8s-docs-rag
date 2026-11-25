@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     rrf_dense_weight: float = Field(default=1.0, ge=0)
     rrf_lexical_weight: float = Field(default=1.0, ge=0)
     max_context_chars: int = Field(default=30_000, ge=1_000)
+    # Chat only: cap the RU->EN query translation and fall back to the original wording.
+    translation_timeout_seconds: float = Field(default=8.0, gt=0, le=120)
 
     docs_git_url: str = "https://github.com/kubernetes/website.git"
     docs_git_branch: str = "main"

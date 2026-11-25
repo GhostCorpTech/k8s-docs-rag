@@ -216,29 +216,113 @@ and score every answer with the same faithfulness judge.
 
 Practical lesson: hosted models drift under the same name. Re-running a small control set before attributing a change to a prompt costs cents ($0.03 here) and avoids a false conclusion.
 
-### 11.2 Intermittent HTTP 400
+### 11.2 Intermittent HTTP 400 — reproduced and explained
 
-The owner saw occasional HTTP 400 errors in the chat — with and without the reranker, not reproducible on demand. 44 diagnostic calls replayed every request shape the application sends, without retries:
+The owner saw occasional HTTP 400 errors in the chat, with and without the reranker. Two sessions on the same day tell the story.
 
-| Scenario | Calls | HTTP 400 |
-|---|---:|---:|
-| Query translation, **identical request ×20** | 20 | 0 |
-| Query translation, 4,000-character question | 2 | 0 |
-| Follow-up rewrite with conversation history | 3 | 0 |
-| LLM rerank, 20 candidates (~12k input tokens) | 5 | 0 |
-| Streaming answer, 8 sources | 8 | 0 |
-| Streaming answer with history | 2 | 0 |
-| Blocking answer, 8 sources | 3 | 0 |
-| Streaming with `stream_options: {include_usage: true}` | 1 | **1** — `{"code": 400, "message": "invalid request"}` |
+**Morning (12:30 UTC) — nothing to see.** 44 calls replayed every request shape the application sends, without retries: 20 identical translations, a 4,000-character question, follow-up rewriting, a 20-candidate rerank, streamed and blocking answers. Together with the citation experiment, 0 of 244 application-shaped calls failed. The only reproducible 400 came from `stream_options: {include_usage: true}`, which the application never sends (the router reports streaming usage in the final chunk without it).
 
-Together with the citation experiment (201 calls) and the benchmark (512 calls), **0 of 756 application-shaped calls returned HTTP 400**. The only reproducible 400 is `stream_options`, which the application never sends (the router reports streaming usage in the final chunk without it — verified for all 10 streamed answers).
+**Evening (18:00–18:55 UTC) — the error, live.** During latency measurements the provider started returning `{"code": 400, "message": "invalid request"}`:
 
-What this does and does not show: the cause of the owner's intermittent 400s is **not established**. Identical requests succeeding 20 times in a row argue against a malformed request from the application; the remaining candidates are provider-side (transient upstream errors surfaced as 400 by the router, or upstream content moderation of specific wordings). What changed to make it manageable:
+| Observation | Result |
+|---|---|
+| Probes with a fresh, trivial request every 3 min ([log A](../eval/experiments/http400-diagnostics/provider-probe-a.jsonl)) | 24 of 30 failed: failing 18:11–18:24, 18:30–18:43 and from 18:53; healthy only at 18:27 and 18:47–18:50 |
+| Same request repeated 5× | deterministic within a period: 3 questions failed 5/5 while 2 others succeeded 5/5 |
+| Changed temperature, `max_tokens`, streaming, message layout, added a random nonce | no effect — even "Reply with the single word: ok" failed |
+| Previously successful prompts, repeated verbatim | kept succeeding (consistent with a router-side response cache) |
+| A second router with the same model ([log B](../eval/experiments/http400-diagnostics/provider-probe-b.jsonl)) | the same 400, now with an explicit `"code": "upstream_rejected"`; 7 of 14 probes failed, in overlapping windows |
+| Failure latency | either < 2 s or a ~11 s hang before the 400 |
 
-- a failing reranker or translation no longer fails the chat — it degrades to hybrid order / the original query and says so;
-- every error shows the stage, the model and a diagnostic ID that matches a log line with the provider's error code and message (no question text), so the next occurrence can be attributed;
-- the UI offers *Retry* on a failed answer.
+**Conclusion.** The intermittent 400s come from the model's upstream provider, behind both routers, in time windows; they are not caused by the application's requests (the morning session's identical requests all succeeded, the evening's trivial requests failed). The error code is misleading — it looks like a client error but is an upstream rejection.
+
+**What the application does about it.**
+
+- **Translation fails** → BM25 runs on the original wording and the answer still comes (`translation_failed` in the trace). In the first evening run, all 10 questions were answered although 3 of 5 translations failed ([run](../eval/experiments/latency/degraded-provider-run.json)).
+- **Translation hangs** → capped at 8 s in chat (successful translations: 1.6 s median, 5.4 s p90; failing ones hung 10–24 s), single attempt, then the same fallback.
+- **Reranker fails** → hybrid order is kept (`rerank_failed`).
+- **Answer generation fails** → there is no honest fallback; the user gets the stage, the model and a diagnostic ID, and a *Retry* button. In the second evening run 3 of 10 answers failed this way — an HTTP 403 and two streams cut mid-response ([run](../eval/experiments/latency/second-run.json)).
+- Production deployments should add a second, independent model provider for the answer stage; the two routers available here shared one upstream and failed together.
 
 ### 11.3 Latency, for reference
 
-Median latency on 25 Nov was lower than during the benchmark: answer 18.4 s (p90 35.8 s), judge 7.1 s (p90 20.5 s); streamed answers in the diagnostics showed the first token after ~2 s. Provider latency varies by day; the benchmark numbers in section 6 are kept as measured.
+Local retrieval is fast and stable; the provider dominates end-to-end time and varies by day:
+
+| Stage | Measured |
+|---|---|
+| Query embedding (E5, CPU) | 30–65 ms (one 3.6 s cold start after a restart) |
+| Vector search, Qdrant top-30 | 9–21 ms |
+| BM25, SQLite FTS5 top-30 | 2–132 ms |
+| Sources ready, English or cached question | ≈ 0.2–0.3 s |
+| RU→EN translation (new Russian question) | 1.6 s median, 5.4 s p90 when healthy |
+| First answer token | median 3.3 s over 17 streamed answers (1.4–28.9 s; the tail is a stalled translation or provider) |
+| Full answer | 2.4–54 s |
+
+Batch figures on 25 Nov: answer 18.4 s median (p90 35.8 s) and judge 7.1 s (p90 20.5 s) under 4 parallel workers. The benchmark numbers in section 6 are kept as measured on 19 Nov.
+
+## 12. Unanswerable questions (refusal test)
+
+A RAG system is only trustworthy if it says "not in the documentation" instead of inventing an answer. 20 questions written in Russian, none answerable from the Kubernetes docs ([questions](../eval/experiments/refusals/questions.jsonl), [answers](../eval/experiments/refusals/results.jsonl)), run through the production chat path — window chunks, hybrid retrieval, no reranker, unchanged answer prompt.
+
+| Category | Example | n | Declined | Corrected the premise | Fabricated |
+|---|---|---:|---:|---:|---:|
+| Out of scope | streaming replication in PostgreSQL 16; GitHub Actions for Python | 7 | 7 | 0 | **0** |
+| Non-existent feature | `kubectl --auto-heal-nodes`, `spec.autoRollbackOnFailure`, "built-in KubeMesh" | 8 | 3 | 5 | **0** |
+| Removed API | dockershim in 1.30, PodSecurityPolicy in 1.29, Ingress `extensions/v1beta1` | 3 | 0 | 3 | **0** |
+| Vendor-specific fact | etcd version in EKS 1.29, default max pods in AKS kubenet | 2 | 2 | 0 | **0** |
+| **Total** | | **20** | **12** | **8** | **0** |
+
+<sub>Labels from a manual review of all 20 answers. An LLM judge (same model) agreed on "no fabrication" in 20/20 and differed only on declined vs corrected for five non-existent-feature questions, where the answer both says the sources lack the item and explains the real mechanism (e.g. Kubernetes does not roll back Deployments automatically; StatefulSet updates always recreate Pods).</sub>
+
+- Every removed-API answer states the right version (dockershim removed in 1.24, PodSecurityPolicy in 1.25, `extensions/v1beta1` Ingress in 1.22) and names the replacement, with citations.
+- The converse holds as well: none of the 200 benchmark answers — all answerable — opens with or contains a refusal phrase, so the model does not over-refuse.
+- The run happened during the provider incident described in §11.2: 10 of 20 query translations failed or hit the 8-second cap and BM25 used the original Russian wording. No answer fabricated even so — the test also exercised the degraded retrieval path under real failure conditions.
+- Metered cost: $0.005.
+
+## 13. Retrieval ablations
+
+Same 50 questions, same restored index, top-10, no LLM calls: BM25 uses the English query translations recorded in the benchmark ([script](../scripts/experiments/ablations.py), [raw](../eval/experiments/retrieval-ablations)). Δ is the paired difference to the default hybrid with a sign-flip permutation p-value.
+
+| Variant | Window R@5 | Window MRR@10 | Δ MRR (p) | Heading R@5 | Heading MRR@10 | Δ MRR (p) |
+|---|---:|---:|---|---:|---:|---|
+| **Hybrid, RRF k = 60 (default)** | 0.96 | 0.793 | — | 0.90 | 0.652 | — |
+| Dense only | 0.90 | 0.665 | -0.127 (0.019) | 0.90 | 0.659 | +0.006 (0.908) |
+| BM25 only (translated query) | 0.87 | 0.665 | -0.128 (0.004) | 0.83 | 0.632 | -0.020 (0.662) |
+| BM25 only, untranslated query | 0.67 | 0.443 | -0.349 (< 0.001) | 0.62 | 0.448 | -0.204 (0.003) |
+| Hybrid, untranslated BM25 query | 0.86 | 0.651 | -0.142 (0.004) | 0.76 | 0.547 | -0.105 (0.052) |
+| Hybrid, k = 10 | 0.92 | 0.800 | +0.007 (0.784) | 0.92 | 0.647 | -0.006 (0.494) |
+| Hybrid, k = 30 | 0.96 | 0.789 | -0.003 (1.000) | 0.90 | 0.654 | +0.002 (1.000) |
+| Hybrid, k = 100 | 0.96 | 0.793 | +0.000 (1.000) | 0.90 | 0.652 | +0.000 (1.000) |
+| Hybrid, dense weight × 2 | 0.94 | 0.795 | +0.003 (0.923) | 0.88 | 0.652 | -0.000 (1.000) |
+| Hybrid, BM25 weight × 2 | 0.96 | 0.794 | +0.001 (1.000) | 0.88 | 0.650 | -0.003 (0.940) |
+| Hybrid, no per-page cap | 0.95 | 0.787 | -0.006 (0.244) | 0.87 | 0.644 | -0.008 (0.246) |
+
+**Reproduction check.** The default variant re-runs the benchmark's no-rerank configurations on the repaired index: window — 50/50 identical top-10 lists and 50/50 identical first-relevant ranks; heading — 47/50 and 49/50. The few heading differences are near-ties flipped by floating-point differences between the original and the re-computed embeddings (heading MRR 0.652 here vs 0.660 in the benchmark).
+
+**Findings.**
+- **On window chunks, hybrid retrieval is clearly better than either channel** (−0.127 MRR for dense-only, p = 0.019; −0.128 for BM25-only, p = 0.004).
+- **On heading chunks it is not:** dense-only (0.659) and hybrid (0.652) are indistinguishable. A plausible reason (not tested separately): section-sized chunks already lead with their own heading and page title, the signal BM25 contributes on window chunks. The hybrid gain is a property of the chunking, not a law.
+- **Query translation is what makes BM25 useful** for Russian questions over English docs: without it BM25 loses 0.20–0.35 MRR, and window hybrid falls to the level of a single channel.
+- **RRF parameters do not matter here** — k from 10 to 100 and 2× channel weights stay within ±0.01 MRR. Nothing is tuned to these 50 questions.
+- **The per-page diversity cap** has no significant effect on these metrics (−0.006 / −0.008 without it); it is kept because it stops one long page from filling the answer context, which these metrics do not measure.
+
+## 14. Incident: a packaged index with all-zero vectors
+
+**What happened.** To make the demo and ablations reproducible without re-embedding, the index was exported from the development machine as Qdrant snapshots plus the SQLite file. Restored here, every vector in both collections was zero — 32,088 of 32,088 — while point IDs, payloads and SQLite were intact. Qdrant returned zero vectors without any error; vector search silently degenerated into arbitrary order, so hybrid results would have rested on BM25 alone.
+
+**Diagnosis.**
+- A fresh collection in the same Qdrant stored and returned vectors correctly, so the server was fine.
+- Reading the snapshot files directly, without Qdrant: in all 12 segments the region that should hold the vectors was zero-filled, and the vector files were larger than the configured chunk size.
+- The benchmark itself was unaffected: its recorded dense similarity scores are 0.80–0.91, impossible with zero vectors. The running Qdrant had correct vectors in memory.
+- Most likely cause: Qdrant persisted vectors through memory-mapped files on a host folder bind-mounted from Windows into the container, where mmap writes are not reliably flushed to the file share.
+- The package's own restore check compared the restored collection with the stopped source — zeros with zeros — and passed. A check has to compare against an independent source of truth.
+
+**Fix.**
+1. `docker-compose.yml` now stores Qdrant data in a named volume ([ADR 0006](adr/0006-qdrant-named-volume.md)).
+2. `app.cli verify-index` checks page hashes against the docs source, chunk IDs between SQLite and Qdrant, vector norms, and re-embeds a random sample of chunk texts to compare with the stored vectors.
+3. `app.cli repair-vectors` re-embedded all 32,088 vectors from the chunk text stored in the payloads — same IDs, same chunking, same page hashes; resumable (it survived a Qdrant restart mid-run).
+4. `app.cli export-index` / `restore-index` package and restore the index with a SHA-256 manifest; the published archive is built from the verified, repaired index.
+
+**Verification of the repaired index.**
+- All 1,730 page hashes match the hashes recomputed from `kubernetes/website@a96b3eb` and the benchmark manifest.
+- All vectors are unit-norm; re-embedding random samples gives cosine similarity ≥ 0.99999999.
+- The default configuration reproduces the benchmark retrieval: for window chunks **50/50 questions return the identical top-10 chunk list** and the same first-relevant rank as on 19 Nov — although the original window vectors were computed on a GPU and the repaired ones on a CPU; for heading chunks 47/50 lists are identical (near-ties, see §13).

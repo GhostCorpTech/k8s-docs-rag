@@ -82,6 +82,10 @@ class FakeCloud:
             raise self.translate_error
         return "translated query"
 
+    def quick_lexical_query(self, query: str, timeout: float) -> str:
+        self.timeouts = [*getattr(self, "timeouts", []), timeout]
+        return self.lexical_query(query)
+
     def rerank(self, query: str, hits: list[dict]) -> list[dict]:
         if self.rerank_error:
             raise self.rerank_error
@@ -150,3 +154,14 @@ def test_successful_rerank_reorders_and_is_reported() -> None:
     hits, trace = retriever.search_with_trace("q", rerank=True, models=FakeCloud())
     assert [hit["chunk_id"] for hit in hits] == ["b", "a"]
     assert trace.rerank_applied and set(trace.timings_ms) >= {"embed", "dense", "bm25", "rerank"}
+
+
+def test_chat_translation_uses_short_timeout_and_strict_does_not() -> None:
+    retriever = make_retriever(dense=[_hit("a")], lexical=[], cached=None)
+    cloud = FakeCloud()
+    retriever.search_with_trace("что такое pod", rerank=False, models=cloud)
+    assert cloud.timeouts == [retriever.settings.translation_timeout_seconds]
+    retriever.database.cached = None
+    strict_cloud = FakeCloud()
+    retriever.search("что такое pod", rerank=False, models=strict_cloud)
+    assert not hasattr(strict_cloud, "timeouts")

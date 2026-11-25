@@ -1,0 +1,60 @@
+{
+  "model": "glm-5.3-flash",
+  "configuration": "window chunks, hybrid retrieval, no rerank, production answer prompt",
+  "judge_verdicts_by_category": {
+    "out_of_scope": {
+      "n": 7,
+      "declined": 7,
+      "corrected": 0,
+      "fabricated": 0
+    },
+    "nonexistent": {
+      "n": 8,
+      "declined": 7,
+      "corrected": 1,
+      "fabricated": 0
+    },
+    "removed": {
+      "n": 3,
+      "declined": 0,
+      "corrected": 3,
+      "fabricated": 0
+    },
+    "vendor_specific": {
+      "n": 2,
+      "declined": 2,
+      "corrected": 0,
+      "fabricated": 0
+    }
+  },
+  "metered_cost_usd_upper_bound": 0.012948825,
+  "manual_review": {
+    "reviewer": "project author, all 20 answers read",
+    "fabricated": 0,
+    "labels": {
+      "r01": "declined",
+      "r02": "declined",
+      "r03": "declined",
+      "r04": "declined",
+      "r05": "declined",
+      "r06": "declined",
+      "r07": "declined",
+      "r08": "declined",
+      "r09": "declined",
+      "r10": "corrected",
+      "r11": "declined",
+      "r12": "declined",
+      "r13": "corrected",
+      "r14": "corrected",
+      "r15": "corrected",
+      "r16": "corrected",
+      "r17": "corrected",
+      "r18": "corrected",
+      "r19": "declined",
+      "r20": "declined"
+    },
+    "notes": "Judge and manual review agree that no answer fabricates. They differ only on declined vs corrected for 5 nonexistent-feature questions, where the answer both says the sources lack the item and explains the real mechanism."
+  },
+  "translation_degraded": "Run during provider instability: 10 of 20 RU->EN translations failed or hit the 8 s cap; BM25 then used the original wording (visible as lexical_query in results.jsonl).",
+  "metered_cost_usd": 0.00545
+}

@@ -89,7 +89,11 @@ class Retriever:
         lexical_query = self.database.cached_lexical_query(query)
         if lexical_query is None:
             try:
-                lexical_query = cloud.lexical_query(query)
+                lexical_query = (
+                    cloud.lexical_query(query)
+                    if strict
+                    else cloud.quick_lexical_query(query, self.settings.translation_timeout_seconds)
+                )
                 self.database.cache_lexical_query(query, lexical_query)
             except Exception as error:
                 if strict or _is_fatal(error):

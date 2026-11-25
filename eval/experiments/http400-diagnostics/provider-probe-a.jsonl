@@ -1,0 +1,30 @@
+{"at": "2026-11-25T18:11:40.779022+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 1.06, "endpoint": "a"}
+{"at": "2026-11-25T18:11:41.834430+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 11.06, "endpoint": "a"}
+{"at": "2026-11-25T18:14:52.897356+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 1.39, "endpoint": "a"}
+{"at": "2026-11-25T18:14:54.289888+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 0.69, "endpoint": "a"}
+{"at": "2026-11-25T18:17:54.980670+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 1.58, "endpoint": "a"}
+{"at": "2026-11-25T18:17:56.561284+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 0.85, "endpoint": "a"}
+{"at": "2026-11-25T18:20:57.409032+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 1.41, "endpoint": "a"}
+{"at": "2026-11-25T18:20:58.816614+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 0.65, "endpoint": "a"}
+{"at": "2026-11-25T18:23:59.468413+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 12.27, "endpoint": "a"}
+{"at": "2026-11-25T18:24:11.735380+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 11.07, "endpoint": "a"}
+{"at": "2026-11-25T18:27:22.810121+00:00", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 2.35, "endpoint": "a"}
+{"at": "2026-11-25T18:27:25.157855+00:00", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 1.7, "endpoint": "a"}
+{"at": "2026-11-25T18:30:26.855181+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 1.12, "endpoint": "a"}
+{"at": "2026-11-25T18:30:27.975235+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 11.26, "endpoint": "a"}
+{"at": "2026-11-25T18:33:39.232052+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 1.34, "endpoint": "a"}
+{"at": "2026-11-25T18:33:40.575140+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 11.41, "endpoint": "a"}
+{"at": "2026-11-25T18:36:51.984744+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 0.97, "endpoint": "a"}
+{"at": "2026-11-25T18:36:52.952486+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 11.65, "endpoint": "a"}
+{"at": "2026-11-25T18:40:04.598222+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 13.44, "endpoint": "a"}
+{"at": "2026-11-25T18:40:18.036822+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 1.57, "endpoint": "a"}
+{"at": "2026-11-25T18:43:19.608192+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 23.79, "endpoint": "a"}
+{"at": "2026-11-25T18:43:43.394535+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 24.11, "endpoint": "a"}
+{"at": "2026-11-25T18:47:07.506422+00:00", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 1.86, "endpoint": "a"}
+{"at": "2026-11-25T18:47:09.367728+00:00", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 1.39, "endpoint": "a"}
+{"at": "2026-11-25T18:50:10.753727+00:00", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 1.44, "endpoint": "a"}
+{"at": "2026-11-25T18:50:12.189293+00:00", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 1.18, "endpoint": "a"}
+{"at": "2026-11-25T18:53:13.365055+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 0.94, "endpoint": "a"}
+{"at": "2026-11-25T18:53:14.304273+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 11.58, "endpoint": "a"}
+{"at": "2026-11-25T18:56:25.889475+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 2.53, "endpoint": "a"}
+{"at": "2026-11-25T18:56:28.422701+00:00", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 0.67, "endpoint": "a"}

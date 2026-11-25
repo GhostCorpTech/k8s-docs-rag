@@ -1,0 +1,14 @@
+{"at": "2026-11-25T18:37:03.967397+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 1.55}
+{"at": "2026-11-25T18:37:05.522293+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 1.66}
+{"at": "2026-11-25T18:40:07.184780+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 13.26}
+{"at": "2026-11-25T18:40:20.443035+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 13.97}
+{"at": "2026-11-25T18:43:34.411107+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 5.24}
+{"at": "2026-11-25T18:43:39.646378+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 23.02}
+{"at": "2026-11-25T18:47:02.668658+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 2.83}
+{"at": "2026-11-25T18:47:05.502995+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 1.38}
+{"at": "2026-11-25T18:50:06.880420+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 1.96}
+{"at": "2026-11-25T18:50:08.841382+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 1.44}
+{"at": "2026-11-25T18:53:10.279527+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 1.58}
+{"at": "2026-11-25T18:53:11.864652+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": false, "http_status": 400, "error_type": "BadRequestError", "seconds": 0.76}
+{"at": "2026-11-25T18:56:12.627029+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 2.99}
+{"at": "2026-11-25T18:56:15.614221+00:00", "endpoint": "b", "model": "glm-5.3-flash", "ok": true, "http_status": 200, "seconds": 1.62}

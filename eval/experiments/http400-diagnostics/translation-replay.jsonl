@@ -1,0 +1,25 @@
+{"group_in_live_run": "failed", "question": "Как ограничить потребление памяти контейнером?", "attempt": 0, "ok": false, "error": "BadRequestError 400", "seconds": 11.94}
+{"group_in_live_run": "failed", "question": "Как ограничить потребление памяти контейнером?", "attempt": 1, "ok": false, "error": "BadRequestError 400", "seconds": 1.53}
+{"group_in_live_run": "failed", "question": "Как ограничить потребление памяти контейнером?", "attempt": 2, "ok": false, "error": "BadRequestError 400", "seconds": 1.56}
+{"group_in_live_run": "failed", "question": "Как ограничить потребление памяти контейнером?", "attempt": 3, "ok": false, "error": "BadRequestError 400", "seconds": 10.64}
+{"group_in_live_run": "failed", "question": "Как ограничить потребление памяти контейнером?", "attempt": 4, "ok": false, "error": "BadRequestError 400", "seconds": 0.72}
+{"group_in_live_run": "failed", "question": "Как смонтировать Secret как файл в Pod?", "attempt": 0, "ok": false, "error": "BadRequestError 400", "seconds": 10.44}
+{"group_in_live_run": "failed", "question": "Как смонтировать Secret как файл в Pod?", "attempt": 1, "ok": false, "error": "BadRequestError 400", "seconds": 11.46}
+{"group_in_live_run": "failed", "question": "Как смонтировать Secret как файл в Pod?", "attempt": 2, "ok": false, "error": "BadRequestError 400", "seconds": 0.67}
+{"group_in_live_run": "failed", "question": "Как смонтировать Secret как файл в Pod?", "attempt": 3, "ok": false, "error": "BadRequestError 400", "seconds": 1.82}
+{"group_in_live_run": "failed", "question": "Как смонтировать Secret как файл в Pod?", "attempt": 4, "ok": false, "error": "BadRequestError 400", "seconds": 10.62}
+{"group_in_live_run": "failed", "question": "Зачем нужен headless Service?", "attempt": 0, "ok": false, "error": "BadRequestError 400", "seconds": 0.67}
+{"group_in_live_run": "failed", "question": "Зачем нужен headless Service?", "attempt": 1, "ok": false, "error": "BadRequestError 400", "seconds": 0.85}
+{"group_in_live_run": "failed", "question": "Зачем нужен headless Service?", "attempt": 2, "ok": false, "error": "BadRequestError 400", "seconds": 11.3}
+{"group_in_live_run": "failed", "question": "Зачем нужен headless Service?", "attempt": 3, "ok": false, "error": "BadRequestError 400", "seconds": 11.0}
+{"group_in_live_run": "failed", "question": "Зачем нужен headless Service?", "attempt": 4, "ok": false, "error": "BadRequestError 400", "seconds": 0.77}
+{"group_in_live_run": "succeeded", "question": "Что такое ResourceQuota и чем он отличается от LimitRange?", "attempt": 0, "ok": true, "error": null, "seconds": 1.58}
+{"group_in_live_run": "succeeded", "question": "Что такое ResourceQuota и чем он отличается от LimitRange?", "attempt": 1, "ok": true, "error": null, "seconds": 0.93}
+{"group_in_live_run": "succeeded", "question": "Что такое ResourceQuota и чем он отличается от LimitRange?", "attempt": 2, "ok": true, "error": null, "seconds": 0.92}
+{"group_in_live_run": "succeeded", "question": "Что такое ResourceQuota и чем он отличается от LimitRange?", "attempt": 3, "ok": true, "error": null, "seconds": 0.94}
+{"group_in_live_run": "succeeded", "question": "Что такое ResourceQuota и чем он отличается от LimitRange?", "attempt": 4, "ok": true, "error": null, "seconds": 1.0}
+{"group_in_live_run": "succeeded", "question": "Как работает graceful shutdown Pod и terminationGracePeriodSeconds?", "attempt": 0, "ok": true, "error": null, "seconds": 1.37}
+{"group_in_live_run": "succeeded", "question": "Как работает graceful shutdown Pod и terminationGracePeriodSeconds?", "attempt": 1, "ok": true, "error": null, "seconds": 1.93}
+{"group_in_live_run": "succeeded", "question": "Как работает graceful shutdown Pod и terminationGracePeriodSeconds?", "attempt": 2, "ok": true, "error": null, "seconds": 2.13}
+{"group_in_live_run": "succeeded", "question": "Как работает graceful shutdown Pod и terminationGracePeriodSeconds?", "attempt": 3, "ok": true, "error": null, "seconds": 1.39}
+{"group_in_live_run": "succeeded", "question": "Как работает graceful shutdown Pod и terminationGracePeriodSeconds?", "attempt": 4, "ok": true, "error": null, "seconds": 1.09}

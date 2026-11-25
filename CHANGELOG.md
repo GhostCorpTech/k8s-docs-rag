@@ -4,6 +4,16 @@
 
 Portfolio release.
 
+### Index repair, ablations, refusals and the 400 root cause (25 Nov, evening)
+- Found that a packaged index restored with all 32,088 vectors equal to zero (Qdrant mmap storage on a Windows bind mount); added `verify-index` (page hashes vs docs source, chunk IDs, vector norms, re-embedding sample) and `repair-vectors` (resumable re-embedding from stored chunk text). Repaired index reproduces the benchmark: window 50/50 identical top-10 lists.
+- Qdrant storage moved to a named Docker volume.
+- `export-index` / `restore-index`: index archive with a SHA-256 manifest for GitHub Releases — quick start in minutes instead of hours.
+- Retrieval ablations ($0): hybrid beats dense-only and BM25-only on window chunks (p ≤ 0.02); no gain on heading chunks; query translation is essential; RRF k and weights insensitive.
+- Refusal test: 0 of 20 unanswerable questions fabricated; 0 of 200 answerable benchmark questions refused.
+- Reproduced the intermittent HTTP 400: an upstream-side rejection across two routers, in time windows; chat translation now has an 8 s single-attempt cap before falling back to the original wording.
+- Demo GIF and screenshots recorded on the live stack with real per-stage timings.
+- Integration tests against a real Qdrant (service container in CI); ADRs 0001–0006; client case study (EN/RU).
+
 ### Live checks (25 Nov, $0.061 metered)
 - Citation A/B on recorded contexts with a control arm: the unchanged prompt now cites in 50/50 answers (was 34/50 in the benchmark); a stricter prompt brings no significant gain, so the prompt is unchanged. Recorded in `eval/experiments/citation-prompt/`.
 - HTTP 400 diagnostics: 0/43 application-shaped calls failed, incl. 20 identical requests; `stream_options` reproducibly returns 400 and is never sent. Recorded in `eval/experiments/http400-diagnostics/`.
@@ -19,7 +29,7 @@ Portfolio release.
 - `GET /api/eval/latest/questions` — per-question ranks and faithfulness for every configuration.
 - New UI: conversation sidebar, Markdown answers with citation chips and hover cards, source cards, retrieval inspector, retrieval settings, evaluation dashboard (KPIs, metric table, rank distribution, per-question matrix), light/dark themes, mobile layout.
 - `scripts/analyze_eval.py`: bootstrap CIs, paired permutation tests, rank distribution, citation compliance, latency and cost per operation, SVG charts (light/dark).
-- Screenshot replay harness that renders recorded benchmark answers through the real UI.
+- Demo GIF and screenshots recorded against the running stack (`scripts/screenshots/live_demo.cjs`).
 - CI: backend lint/format/tests, frontend build, re-derivation of published evaluation tables.
 - Apache-2.0 license, NOTICE with CC BY 4.0 attribution for Kubernetes documentation excerpts.
 
@@ -29,7 +39,7 @@ Portfolio release.
 - Frontend served same-origin behind nginx (`/api` proxied, SSE unbuffered); no build-time API URL, no CORS in production.
 - All frontend dependencies pinned to exact versions (were `latest`).
 - API error messages in English with stage, model and diagnostic ID.
-- Ruff rule set made explicit; 81 tests (was 62), branch+line coverage 73 % (was 68 %).
+- Ruff rule set made explicit; 87 tests (was 62), branch+line coverage 75 % (was 68 %).
 
 ## 0.4 — 2026-11-19 (audited pipeline, benchmark run `20261119T184220545709Z`)
 

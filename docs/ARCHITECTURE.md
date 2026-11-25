@@ -112,7 +112,7 @@ question ──► (follow-up? rewrite to standalone)                         LL
 | Situation | Evaluation (`strict=True`) | Chat (`strict=False`) |
 |---|---|---|
 | Reranker fails | Stop; the stage is retried or the run halts | Keep RRF order, report `rerank_failed` in the trace, show a notice in the UI |
-| Translation fails | Stop | BM25 uses the original question, report `translation_failed` |
+| Translation fails or takes > 8 s | Stop (retried, no time cap) | One attempt; BM25 uses the original question, report `translation_failed` |
 | 401 / 402 / 403 from the provider | Stop | Stop — a broken key or empty balance must be visible |
 
 Evaluation must never let a provider hiccup silently change a metric; a user would rather get an answer from hybrid search than an error.

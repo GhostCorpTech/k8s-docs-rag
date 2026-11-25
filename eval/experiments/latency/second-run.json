@@ -1,0 +1,201 @@
+{
+  "endpoint": "POST /api/chat/stream (window chunks, hybrid, no rerank), sequential, CPU-only host",
+  "client_seconds": {
+    "sources_s": {
+      "median": 0.2518332119993829,
+      "min": 0.18821900300008565,
+      "max": 8.243711269000414,
+      "n": 10
+    },
+    "first_token_s": {
+      "median": 2.5914639390002776,
+      "min": 1.438560160000634,
+      "max": 7.2794089740000345,
+      "n": 7
+    },
+    "total_s": {
+      "median": 7.780766166999911,
+      "min": 0.42044392700063327,
+      "max": 28.620949594000194,
+      "n": 10
+    }
+  },
+  "server_stage_ms": {
+    "embed": {
+      "median": 52.150000000000006,
+      "min": 36.8,
+      "max": 102.7,
+      "n": 10
+    },
+    "dense": {
+      "median": 12.95,
+      "min": 10.5,
+      "max": 16.9,
+      "n": 10
+    },
+    "translate": {
+      "median": 1558.4,
+      "min": 753.1,
+      "max": 8063.9,
+      "n": 3
+    },
+    "bm25": {
+      "median": 32.900000000000006,
+      "min": 0.9,
+      "max": 87.3,
+      "n": 10
+    }
+  },
+  "outcomes": {
+    "done": 7,
+    "error": 3
+  },
+  "rows": [
+    {
+      "question": "Как ограничить потребление памяти контейнером?",
+      "answer_chars": 1041,
+      "sources_s": 1.7382256820001203,
+      "first_token_s": 4.237239578999834,
+      "total_s": 22.28477497499989,
+      "outcome": "done",
+      "degraded": [
+        "translation_failed:BadRequestError"
+      ],
+      "server_timings_ms": {
+        "embed": 83.1,
+        "dense": 12.8,
+        "translate": 1558.4,
+        "bm25": 0.9
+      }
+    },
+    {
+      "question": "How do I expose a Deployment with a Service of type NodePort?",
+      "answer_chars": 1485,
+      "sources_s": 0.26989844199943036,
+      "first_token_s": 2.5914639390002776,
+      "total_s": 28.620949594000194,
+      "outcome": "done",
+      "degraded": [],
+      "server_timings_ms": {
+        "embed": 62.8,
+        "dense": 12.5,
+        "bm25": 87.3
+      }
+    },
+    {
+      "question": "Что такое ResourceQuota и чем он отличается от LimitRange?",
+      "answer_chars": 1376,
+      "sources_s": 0.201122051999846,
+      "first_token_s": 1.438560160000634,
+      "total_s": 2.4211983499999405,
+      "outcome": "done",
+      "degraded": [],
+      "server_timings_ms": {
+        "embed": 57.2,
+        "dense": 16.2,
+        "bm25": 7.9
+      }
+    },
+    {
+      "question": "How does kubectl port-forward work?",
+      "answer_chars": 0,
+      "sources_s": 0.18821900300008565,
+      "total_s": 0.42044392700063327,
+      "outcome": "error",
+      "degraded": [],
+      "server_timings_ms": {
+        "embed": 40.3,
+        "dense": 16.9,
+        "bm25": 35.2
+      }
+    },
+    {
+      "question": "Как смонтировать Secret как файл в Pod?",
+      "answer_chars": 0,
+      "sources_s": 8.243711269000414,
+      "total_s": 11.107661971999732,
+      "outcome": "error",
+      "degraded": [
+        "translation_failed:APITimeoutError"
+      ],
+      "server_timings_ms": {
+        "embed": 41.7,
+        "dense": 13.4,
+        "translate": 8063.9,
+        "bm25": 21.7
+      }
+    },
+    {
+      "question": "What is the difference between a Job's completions and parallelism?",
+      "answer_chars": 722,
+      "sources_s": 0.23376798199933546,
+      "first_token_s": 1.8747651989997394,
+      "total_s": 16.765856137999435,
+      "outcome": "done",
+      "degraded": [],
+      "server_timings_ms": {
+        "embed": 46.5,
+        "dense": 13.8,
+        "bm25": 70.3
+      }
+    },
+    {
+      "question": "Как работает graceful shutdown Pod и terminationGracePeriodSeconds?",
+      "answer_chars": 1964,
+      "sources_s": 0.20989136499974848,
+      "first_token_s": 3.1466047009998874,
+      "total_s": 4.453870362000089,
+      "outcome": "done",
+      "degraded": [],
+      "server_timings_ms": {
+        "embed": 62.7,
+        "dense": 12.6,
+        "bm25": 30.6
+      }
+    },
+    {
+      "question": "How do I drain a node before maintenance?",
+      "answer_chars": 1976,
+      "sources_s": 0.2839762149997114,
+      "first_token_s": 1.5327436819998184,
+      "total_s": 2.7749186969995208,
+      "outcome": "done",
+      "degraded": [],
+      "server_timings_ms": {
+        "embed": 102.7,
+        "dense": 13.1,
+        "bm25": 57.0
+      }
+    },
+    {
+      "question": "Зачем нужен headless Service?",
+      "answer_chars": 1121,
+      "sources_s": 0.9333959320001668,
+      "first_token_s": 7.2794089740000345,
+      "total_s": 18.197610723000253,
+      "outcome": "done",
+      "degraded": [
+        "translation_failed:BadRequestError"
+      ],
+      "server_timings_ms": {
+        "embed": 36.8,
+        "dense": 10.5,
+        "translate": 753.1,
+        "bm25": 9.9
+      }
+    },
+    {
+      "question": "How do I configure a CronJob so that runs never overlap?",
+      "answer_chars": 0,
+      "sources_s": 0.2274035950003963,
+      "total_s": 2.4578522029996748,
+      "outcome": "error",
+      "degraded": [],
+      "server_timings_ms": {
+        "embed": 47.1,
+        "dense": 12.2,
+        "bm25": 66.2
+      }
+    }
+  ]
+}

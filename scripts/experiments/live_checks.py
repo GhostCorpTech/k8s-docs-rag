@@ -495,15 +495,230 @@ def summarize_citations(
     print(json.dumps(summary, ensure_ascii=False, indent=1))
 
 
+# ------------------------------------------------------------------ refusal test
+
+REFUSAL_JUDGE = """You check a documentation assistant on questions whose answer is NOT in the
+Kubernetes documentation (out of scope, non-existent features, removed APIs, vendor-specific facts).
+
+Question: {question}
+Category: {category}
+Expected behaviour: {expected}
+
+Answer:
+{answer}
+
+Classify the answer:
+- "declined": clearly says the documentation/sources do not contain this; may mention related,
+  clearly-sourced material.
+- "corrected": explicitly states the premise is wrong (the feature does not exist, or was removed)
+  and, where relevant, names the replacement.
+- "fabricated": describes a non-existent feature/flag/field as real, invents numbers or steps, or
+  answers an out-of-scope question from general knowledge as if it were documented.
+Return only JSON: {{"verdict": "declined|corrected|fabricated", "reason": "short"}}"""
+
+
+def refusals(budget: float, workers: int) -> None:
+    from app.retrieval import Retriever
+
+    out = ROOT / "eval/experiments/refusals"
+    meter = Meter(budget)
+    questions = [
+        json.loads(line)
+        for line in (out / "questions.jsonl").read_text("utf-8").splitlines()
+    ]
+    results = {}
+    if (out / "results.jsonl").exists():  # resume: keep finished questions
+        for line in (out / "results.jsonl").read_text("utf-8").splitlines():
+            record = json.loads(line)
+            results[record["id"]] = record
+    lock = Lock()
+
+    def run(item: dict) -> None:
+        if item["id"] in results:
+            return
+        cloud = models(out, meter, question_id=item["id"])
+        settings = cloud.settings
+        hits, trace = Retriever(settings).search_with_trace(
+            item["question"],
+            "window",
+            rerank=False,
+            limit=settings.final_limit,
+            models=cloud,
+        )
+        context = cloud.context_hits(hits)
+        answer = CloudModels.answer.__wrapped__(cloud, item["question"], context)
+
+        @cloud_retry
+        def judge() -> dict:
+            from app.cloud import CloudOutputError, _json_from_text
+
+            response = cloud._complete(
+                "refusal_judge",
+                model=settings.judge_model,
+                temperature=0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": REFUSAL_JUDGE.format(
+                            answer=answer,
+                            question=item["question"],
+                            category=item["category"],
+                            expected=item["expected_behaviour"],
+                        ),
+                    }
+                ],
+            )
+            verdict = _json_from_text(response.choices[0].message.content or "")
+            if verdict.get("verdict") not in {"declined", "corrected", "fabricated"}:
+                raise CloudOutputError("invalid verdict")
+            return verdict
+
+        verdict = judge()
+        record = {
+            **item,
+            "lexical_query": trace.lexical_query,
+            "top_sources": [f"{h['title']} > {h['heading']}" for h in context[:3]],
+            "answer": answer,
+            "judge": verdict,
+        }
+        with lock:
+            results[item["id"]] = record
+        print(item["id"], verdict["verdict"], f"spent=${meter.spent:.4f}", flush=True)
+
+    try:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            list(pool.map(run, questions))
+    except BudgetExceeded as error:
+        print("stopped:", error)
+    ordered = [results[q["id"]] for q in questions if q["id"] in results]
+    (out / "results.jsonl").write_text(
+        "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in ordered),
+        encoding="utf-8",
+    )
+    by_category: dict = {}
+    for record in ordered:
+        entry = by_category.setdefault(
+            record["category"], {"n": 0, "declined": 0, "corrected": 0, "fabricated": 0}
+        )
+        entry["n"] += 1
+        entry[record["judge"]["verdict"]] += 1
+    write_json(
+        out / "summary.json",
+        {
+            "model": Settings().chat_model,
+            "configuration": "window chunks, hybrid retrieval, no rerank, production answer prompt",
+            "judge_verdicts_by_category": by_category,
+            "metered_cost_usd_upper_bound": meter.spent,
+        },
+    )
+    print(json.dumps(by_category, indent=1))
+
+
+# ------------------------------------------------------------------ end-to-end latency
+
+LATENCY_QUESTIONS = [
+    "Как ограничить потребление памяти контейнером?",
+    "How do I expose a Deployment with a Service of type NodePort?",
+    "Что такое ResourceQuota и чем он отличается от LimitRange?",
+    "How does kubectl port-forward work?",
+    "Как смонтировать Secret как файл в Pod?",
+    "What is the difference between a Job's completions and parallelism?",
+    "Как работает graceful shutdown Pod и terminationGracePeriodSeconds?",
+    "How do I drain a node before maintenance?",
+    "Зачем нужен headless Service?",
+    "How do I configure a CronJob so that runs never overlap?",
+]
+
+
+def latency(api: str, name: str = "summary") -> None:
+    """Time the real /api/chat/stream endpoint (window, no rerank), one question at a time."""
+    import httpx
+
+    out = ROOT / "eval/experiments/latency"
+    out.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for question in LATENCY_QUESTIONS:
+        started = time.perf_counter()
+        marks: dict = {}
+        trace, chars = None, 0
+        with httpx.stream(
+            "POST", f"{api}/api/chat/stream", json={"question": question}, timeout=300
+        ) as response:
+            event = None
+            for line in response.iter_lines():
+                if line.startswith("event:"):
+                    event = line[6:].strip()
+                elif line.startswith("data:"):
+                    data = json.loads(line[5:])
+                    now = time.perf_counter() - started
+                    if event == "sources":
+                        marks["sources_s"] = now
+                        trace = data["trace"]
+                    elif event == "delta":
+                        marks.setdefault("first_token_s", now)
+                        chars += len(data["text"])
+                    elif event in ("done", "error"):
+                        marks["total_s"] = now
+                        marks["outcome"] = event
+        rows.append(
+            {
+                "question": question,
+                "answer_chars": chars,
+                **marks,
+                "degraded": trace["degraded"] if trace else None,
+                "server_timings_ms": trace["timings_ms"] if trace else None,
+            }
+        )
+        print(json.dumps(rows[-1], ensure_ascii=False), flush=True)
+
+    def stats(values):
+        values = sorted(v for v in values if v is not None)
+        return {
+            "median": statistics.median(values),
+            "min": values[0],
+            "max": values[-1],
+            "n": len(values),
+        }
+
+    stage = lambda key: [
+        r["server_timings_ms"].get(key) for r in rows if r["server_timings_ms"]
+    ]
+    write_json(
+        out / f"{name}.json",
+        {
+            "endpoint": "POST /api/chat/stream (window chunks, hybrid, no rerank), sequential, CPU-only host",
+            "client_seconds": {
+                k: stats([r.get(k) for r in rows])
+                for k in ("sources_s", "first_token_s", "total_s")
+            },
+            "server_stage_ms": {
+                k: stats(stage(k)) for k in ("embed", "dense", "translate", "bm25")
+            },
+            "outcomes": {
+                o: sum(r.get("outcome") == o for r in rows) for o in ("done", "error")
+            },
+            "rows": rows,
+        },
+    )
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("experiment", choices=["diag400", "citations"])
-    parser.add_argument("--budget", type=float, required=True)
+    parser.add_argument(
+        "experiment", choices=["diag400", "citations", "refusals", "latency"]
+    )
+    parser.add_argument("--budget", type=float, default=0.0)
+    parser.add_argument("--api", default="http://localhost:8088")
+    parser.add_argument("--name", default="summary")
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--variants", default="control_v2,v3")
     args = parser.parse_args()
     random.seed(0)
     if args.experiment == "diag400":
         diag400(args.budget)
+    elif args.experiment == "latency":
+        latency(args.api, args.name)
+    elif args.experiment == "refusals":
+        refusals(args.budget, args.workers)
     else:
         citations(args.budget, args.workers, args.variants.split(","))

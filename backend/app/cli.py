@@ -10,7 +10,9 @@ from .database import Database
 from .estimation import estimate_evaluation_cost
 from .evaluation import audit_evaluation, resume_evaluation, run_evaluation
 from .indexer import Indexer
+from .snapshot import export_index, restore_index
 from .validation import validate_chunks
+from .verification import repair_vectors, verify_index
 
 app = typer.Typer(no_args_is_help=True, help="Kubernetes documentation RAG utilities")
 console = Console()
@@ -136,6 +138,53 @@ def validate_chunking() -> None:
     output.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     console.print_json(data=payload)
     console.print(f"Validation: {output}")
+
+
+@app.command("verify-index")
+def verify_index_command(
+    sample: Annotated[
+        int, typer.Option(help="Chunks per strategy to re-embed and compare (0 = skip)")
+    ] = 100,
+) -> None:
+    """Check a restored or rebuilt index against the docs source, SQLite and Qdrant."""
+    report = verify_index(get_settings(), sample=sample)
+    console.print_json(data=report)
+    if not report["ok"]:
+        raise typer.Exit(code=1)
+
+
+@app.command("repair-vectors")
+def repair_vectors_command(
+    strategy: Annotated[str, typer.Option(help="heading, window or both")] = "both",
+) -> None:
+    """Re-embed vectors that are not unit-norm from stored chunk text (no re-chunking)."""
+    strategies = ("heading", "window") if strategy == "both" else (strategy,)
+    for selected in strategies:
+        console.print(repair_vectors(get_settings(), selected, log=console.print))
+
+
+@app.command("export-index")
+def export_index_command(
+    archive: Annotated[str, typer.Argument(help="Output .zip path")],
+) -> None:
+    """Package both Qdrant collections and the SQLite index into one verified archive."""
+    from pathlib import Path
+
+    manifest = export_index(get_settings(), Path(archive))
+    console.print_json(data={k: v for k, v in manifest.items() if k != "files"})
+    console.print(f"Archive: [bold]{archive}[/bold]")
+
+
+@app.command("restore-index")
+def restore_index_command(
+    archive: Annotated[str, typer.Argument(help="Archive created by export-index")],
+    force: Annotated[bool, typer.Option("--force", help="Replace an existing index")] = False,
+) -> None:
+    """Restore a packaged index (e.g. from a GitHub Release) instead of re-embedding."""
+    from pathlib import Path
+
+    console.print_json(data=restore_index(get_settings(), Path(archive), force=force))
+    console.print("Restored. Optional: `index --sync` updates it to the latest docs incrementally.")
 
 
 @app.command()
