@@ -309,6 +309,7 @@ def setup_fonts() -> None:
             "font.family": family,
             "font.size": 10,
             "svg.fonttype": "path",
+            "svg.hashsalt": "k8s-docs-rag",  # stable element ids -> reproducible files
             "axes.spines.top": False,
             "axes.spines.right": False,
             "axes.spines.left": False,

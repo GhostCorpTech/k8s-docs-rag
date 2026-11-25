@@ -48,4 +48,5 @@ jobs:
           python-version: "3.12"
       - run: pip install -r scripts/requirements.txt
       - run: python scripts/analyze_eval.py > /dev/null
+      # Charts depend on installed fonts, so only the numeric tables are compared.
       - run: git diff --exit-code -- docs/results
