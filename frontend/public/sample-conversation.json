@@ -1,0 +1,133 @@
+{
+ "id": "sample",
+ "title": "Как проверить rollout Deployment и откатить неудачное обн…",
+ "createdAt": 1795632545907,
+ "updatedAt": 1795632565636,
+ "messages": [
+  {
+   "role": "user",
+   "id": "3e205d02-dbb5-41cb-bdfd-3a5db7bda304",
+   "content": "Как проверить rollout Deployment и откатить неудачное обновление?"
+  },
+  {
+   "role": "assistant",
+   "id": "8ec64f55-c6ff-47c9-a524-1874fd9c44b5",
+   "content": "## Проверка rollout\n\n- Статус обновления: `kubectl rollout status deployment/nginx-deployment` — при успешном завершении выводит `successfully rolled out` и возвращает код 0 [6].\n- Зависший rollout: если прогресс не происходит в течение `.spec.progressDeadlineSeconds` (по умолчанию 600 секунд), условие `Progressing` становится `False`. Проверить можно через `kubectl describe deployment nginx-deployment` — смотрите секции `Conditions` и `Events` [1].\n- Причины зависания: нехватка квоты, ошибки readiness-проб, ошибки скачивания образа, недостаточные права, limit ranges, ошибки конфигурации приложения [6].\n\n## Откат\n\n- История ревизий: `kubectl rollout history deployment/nginx-deployment` [1][2].\n- Откат к предыдущей ревизии: `kubectl rollout undo deployment/nginx-deployment` [2].\n- Откат к конкретной ревизии: `kubectl rollout undo deployment/nginx-deployment --to-revision=1` [2].\n- Проверить завершение отката: снова `kubectl rollout status deployment/nginx-deployment` [2].\n\n## Полезно знать\n\n- История ревизий хранится в ReplicaSets; по умолчанию сохраняется 10 старых, лимит меняется через `.spec.revisionHistoryLimit` (значение `0` полностью отключает откат) [2].\n- Ревизия создаётся только при изменении `.spec.template` (например, образа или меток); масштабирование ревизию не создаёт, поэтому при откате возвращается только Pod-шаблон [4].",
+   "status": "done",
+   "citations": [
+    {
+     "index": 1,
+     "title": "Update a Deployment Without Downtime",
+     "heading": "Configuring rolling update strategy",
+     "url": "https://kubernetes.io/docs/tasks/run-application/update-deployment-rolling/#configuring-rolling-update-strategy",
+     "excerpt": "# Update a Deployment Without Downtime\n` or `25%` |\n\n \n`maxUnavailable` and `maxSurge` accept an absolute number or a percentage.\nKubernetes calculates percentages from the desired replica count, rounding down\nfor `maxUnavailable` and rounding up for `maxSurge`.\n \n\nTo configure these parameters, use `kubectl patch`:\n\n```shell\nkubectl patch deployment nginx-deployment -p \\\n  '{\"spec\":{\"strategy\":{\"rollingUpdate\":{\"maxUnavailable\":\"25%\",\"maxSurge\":\"25%\"}}}}'\n```\n\nYou can also set these fields in a Deployment manifest under\n`.spec.strategy.rollingUpdate`. For detailed examples, see\nmax unavailabl",
+     "score": 0.031009615384615385,
+     "dense_rank": 4,
+     "lexical_rank": 5,
+     "rerank_score": null
+    },
+    {
+     "index": 2,
+     "title": "Update a Deployment Without Downtime",
+     "heading": "Rolling back to a previous revision > Viewing rollout history",
+     "url": "https://kubernetes.io/docs/tasks/run-application/update-deployment-rolling/#viewing-rollout-history",
+     "excerpt": "# Update a Deployment Without Downtime\nctl rollout history deployment/nginx-deployment\n```\n\nThe output is similar to:\n\n```\ndeployment.apps/nginx-deployment\nREVISION  CHANGE-CAUSE\n1         <none>\n2         <none>\n```\n\n \nThe `CHANGE-CAUSE` column shows the value of the `kubernetes.io/change-cause`\nannotation at the time of each revision. This annotation is **not** set automatically,\nbut if you are using an automated solution to manage Deployments, the tool you use\nmay write some text into that annotation.\n \n\n### Rolling back to the previous revision\n\n```shell\nkubectl rollout undo deployment/ngi",
+     "score": 0.030798389007344232,
+     "dense_rank": 7,
+     "lexical_rank": 3,
+     "rerank_score": null
+    },
+    {
+     "index": 3,
+     "title": "Deploy a Release Using a Canary Deployment",
+     "heading": "Adjusting traffic distribution",
+     "url": "https://kubernetes.io/docs/tutorials/stateless-application/canary-deployment/#adjusting-traffic-distribution",
+     "excerpt": "# Deploy a Release Using a Canary Deployment\n--replicas=2\n```\n\nVerify the new Pod is running:\n\n```shell\nkubectl get pods -l app.kubernetes.io/name=rollout-demo\n```\n\nContinue monitoring. If everything looks good, you can scale the canary further and scale down the stable version.\n\n## Completing the rollout\n\nIf your monitoring instead uncovered issues with the canary, you would roll back instead.\nTo practice for a problem scenario, you could skip ahead to Rolling back a canary deployment.\n\nTo complete the rollout with a single Deployment, first scale the stable Deployment back up so you do not l",
+     "score": 0.030776515151515152,
+     "dense_rank": 6,
+     "lexical_rank": 4,
+     "rerank_score": null
+    },
+    {
+     "index": 4,
+     "title": "Deployments",
+     "heading": "Updating a Deployment > Label selector updates",
+     "url": "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#label-selector-updates",
+     "excerpt": "# Deployments\nets are not orphaned, and a new ReplicaSet is not created,\n  but note that the removed label still exists in any existing Pods and ReplicaSets.\n  You can clean that up by triggering a rollout for the Deployment.\n\n## Rolling Back a Deployment\n\nSometimes, you may want to rollback a Deployment; for example, when the Deployment is not stable, such as crash looping.\nBy default, all of the Deployment's rollout history is kept in the system so that you can rollback anytime you want\n(you can change that by modifying revision history limit).\n\n \nA Deployment's revision is created when a De",
+     "score": 0.03047794966520434,
+     "dense_rank": 1,
+     "lexical_rank": 11,
+     "rerank_score": null
+    },
+    {
+     "index": 5,
+     "title": "Performing a Rolling Update",
+     "heading": "Rolling updates overview > Roll back an update",
+     "url": "https://kubernetes.io/docs/tutorials/kubernetes-basics/update/update-intro/#roll-back-an-update",
+     "excerpt": "# Performing a Rolling Update\nget pods` subcommand to list all Pods:\n\n```shell\nkubectl get pods\n```\n\nNotice that some of the Pods have a status of `ImagePullBackOff`.\n\nTo get more insight into the problem, run the `describe pods` subcommand:\n\n```shell\nkubectl describe pods\n```\n\nIn the `Events` section of the output for the affected Pods, notice that the `v10`\nimage version did not exist in the repository.\n\nTo roll back the deployment to your last working version, use the `rollout undo`\nsubcommand:\n\n```shell\nkubectl rollout undo deployments/kubernetes-bootcamp\n```\n\nThe `rollout undo` command re",
+     "score": 0.03047794966520434,
+     "dense_rank": 11,
+     "lexical_rank": 1,
+     "rerank_score": null
+    },
+    {
+     "index": 6,
+     "title": "Deployments",
+     "heading": "Deployment status > Complete Deployment",
+     "url": "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment",
+     "excerpt": "# Deployments\nReplicaSetAvailable`\n\nThis `Progressing` condition will retain a status value of `\"True\"` until a new rollout\nis initiated. The condition holds even when availability of replicas changes (which\ndoes instead affect the `Available` condition).\n\nYou can check if a Deployment has completed by using `kubectl rollout status`. If the rollout completed\nsuccessfully, `kubectl rollout status` returns a zero exit code.\n\n```shell\nkubectl rollout status deployment/nginx-deployment\n```\nThe output is similar to this:\n```\nWaiting for rollout to finish: 2 of 3 updated replicas are available...\nde",
+     "score": 0.027637721755368813,
+     "dense_rank": 3,
+     "lexical_rank": 25,
+     "rerank_score": null
+    },
+    {
+     "index": 7,
+     "title": "Deploy a Release Using a Canary Deployment",
+     "heading": "Completing the rollout",
+     "url": "https://kubernetes.io/docs/tutorials/stateless-application/canary-deployment/#completing-the-rollout",
+     "excerpt": "# Deploy a Release Using a Canary Deployment\n.\n\n## Rolling back a canary deployment\n\nIf you detect issues with the canary version, you can quickly roll back:\n\nScale down the canary deployment:\n\n```shell\nkubectl scale deployment/rollout-demo-canary --replicas=0\n```\n\nScaling to zero preserves the canary Deployment so you can inspect its configuration while you investigate. Once you've finished, delete it with `kubectl delete deployment rollout-demo-canary`.\n\nScale the stable version back up if needed:\n\n```shell\nkubectl scale deployment/rollout-demo-stable --replicas=3\n```\n\nInvestigate the issues",
+     "score": 0.02632034632034632,
+     "dense_rank": 17,
+     "lexical_rank": 15,
+     "rerank_score": null
+    },
+    {
+     "index": 8,
+     "title": "kubectl rollout undo",
+     "heading": "Parent Options Inherited",
+     "url": "https://kubernetes.io/docs/reference/kubectl/generated/kubectl_rollout/kubectl_rollout_undo/#parent-options-inherited",
+     "excerpt": "# kubectl rollout undo\n</td>\n</tr>\n<tr>\n<td></td><td style=\"line-height: 130%; word-wrap: break-word;\"><p>Username for basic authentication to the API server</p></td>\n</tr>\n\n<tr>\n<td colspan=\"2\">--version version[=true]</td>\n</tr>\n<tr>\n<td></td><td style=\"line-height: 130%; word-wrap: break-word;\"><p>--version, --version=raw prints version information and quits; --version=vX.Y.Z... sets the reported version</p></td>\n</tr>\n\n<tr>\n<td colspan=\"2\">--warnings-as-errors</td>\n</tr>\n<tr>\n<td></td><td style=\"line-height: 130%; word-wrap: break-word;\"><p>Treat warnings received from the server as errors",
+     "score": 0.023015873015873017,
+     "dense_rank": 24,
+     "lexical_rank": 30,
+     "rerank_score": null
+    }
+   ],
+   "settings": {
+    "strategy": "window",
+    "rerank": false,
+    "limit": 8
+   },
+   "trace": {
+    "strategy": "window",
+    "lexical_query": "check rollout status of a Deployment and roll back an unsuccessful update (kubectl rollout undo)",
+    "dense_candidates": 30,
+    "lexical_candidates": 30,
+    "fused_candidates": 23,
+    "rerank_requested": false,
+    "rerank_applied": false,
+    "degraded": [],
+    "timings_ms": {
+     "embed": 64.8,
+     "dense": 20.2,
+     "bm25": 132.2
+    }
+   },
+   "standaloneQuestion": null,
+   "totalMs": 19644.7,
+   "firstTokenMs": 2306.5,
+   "requestId": "8189662eed0b493bb0cdb9cefb3ccde2"
+  }
+ ]
+}

@@ -37,6 +37,7 @@ flowchart TB
 | `backend/app/retrieval.py` | Hybrid search, RRF fusion, diversity, reranking, degradation |
 | `backend/app/cloud.py` | All LLM calls, JSON validation, retries, usage/cost/latency logging, streaming |
 | `backend/app/main.py` | HTTP API and the SSE endpoint |
+| `backend/app/access.py` | Demo access keys: hashed storage, expiry, revocation, per-key and server-wide daily quotas, invalid-key throttle |
 | `backend/app/evaluation.py` | Manifest-pinned, checkpointed, resumable, parallel evaluation |
 | `backend/app/costs.py`, `estimation.py` | Metered cost of a run; offline cost estimate for a planned run |
 | `frontend/src` | UI |
@@ -158,3 +159,4 @@ In Docker, nginx serves the build and proxies `/api` and `/health` to the backen
 - Shortcode includes cannot escape the repository directory.
 - FTS5 input is fully quoted.
 - CORS is limited to the local dev origins; production traffic is same-origin.
+- **Public demo** (`DEMO_MODE=true`, [ADR 0007](adr/0007-demo-access-keys.md), [DEPLOY.md](DEPLOY.md)): chat and search require a personal bearer key; only its SHA-256 is stored. Quotas are checked and counted in one SQLite transaction and refunded when the provider fails. Invalid keys are throttled per client address, which nginx resolves from `X-Forwarded-For` trusting only private hops. Read-only endpoints stay public. Only the web container is published, on loopback, behind the operator's reverse proxy.

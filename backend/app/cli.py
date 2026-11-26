@@ -4,6 +4,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from .access import AccessStore
 from .config import get_settings
 from .costs import summarize_costs
 from .database import Database
@@ -185,6 +186,88 @@ def restore_index_command(
 
     console.print_json(data=restore_index(get_settings(), Path(archive), force=force))
     console.print("Restored. Optional: `index --sync` updates it to the latest docs incrementally.")
+
+
+# ---------------------------------------------------------------- demo access keys
+def _store() -> AccessStore:
+    return AccessStore(get_settings().access_db_path)
+
+
+def _date(value) -> str:
+    return value.strftime("%Y-%m-%d %H:%M") if value else "—"
+
+
+@app.command("create-key")
+def create_key(
+    label: Annotated[str, typer.Option(help="Who the key is for, e.g. 'hh: Company X'")],
+    days: Annotated[int | None, typer.Option(min=1, max=365, help="Validity in days")] = None,
+    daily_limit: Annotated[
+        int | None, typer.Option(min=1, max=10_000, help="Questions per UTC day")
+    ] = None,
+) -> None:
+    """Issue a personal demo key. The key is shown once; only its hash is stored."""
+    settings = get_settings()
+    key, secret = _store().create(
+        label,
+        days=days or settings.demo_key_days,
+        daily_limit=daily_limit or settings.demo_key_daily_limit,
+    )
+    console.print(f"Key [bold]#{key.id}[/bold] for {key.label!r}")
+    console.print(f"  valid until {_date(key.expires_at)} UTC, {key.daily_limit} questions/day")
+    console.print(f"  key:  [bold green]{secret}[/bold green]")
+    if settings.demo_public_url:
+        console.print(f"  link: {settings.demo_public_url.rstrip('/')}/#/?key={secret}")
+    console.print("[dim]Shown once. Revoke with: revoke-key " + str(key.id) + "[/dim]")
+
+
+@app.command("list-keys")
+def list_keys() -> None:
+    """All demo keys with state, today's usage and totals."""
+    store = _store()
+    now = store.clock()
+    table = Table("ID", "Key", "Label", "State", "Today", "Total", "Last used", "Expires")
+    for key, today in store.list():
+        table.add_row(
+            str(key.id),
+            key.hint,
+            key.label,
+            key.state(now),
+            f"{today}/{key.daily_limit}",
+            str(key.total_questions),
+            _date(key.last_used_at),
+            key.expires_at.strftime("%Y-%m-%d"),
+        )
+    console.print(table)
+    settings = get_settings()
+    console.print(
+        f"Server today: {store.used_today()}/{settings.demo_global_daily_limit} questions (UTC day)"
+    )
+
+
+@app.command("revoke-key")
+def revoke_key(key_id: Annotated[int, typer.Argument(help="ID from list-keys")]) -> None:
+    """Revoke a key immediately; its next request is refused."""
+    try:
+        key = _store().revoke(key_id)
+    except KeyError as error:
+        raise typer.BadParameter(str(error)) from error
+    console.print(f"Key #{key.id} ({key.label}) revoked at {_date(key.revoked_at)} UTC")
+
+
+@app.command("extend-key")
+def extend_key(
+    key_id: Annotated[int, typer.Argument(help="ID from list-keys")],
+    days: Annotated[int, typer.Option(min=1, max=365, help="Valid for N days from now")] = 30,
+    daily_limit: Annotated[int | None, typer.Option(min=1, max=10_000)] = None,
+) -> None:
+    """Extend an active or expired key (and optionally change its daily limit)."""
+    try:
+        key = _store().extend(key_id, days, daily_limit)
+    except (KeyError, ValueError) as error:
+        raise typer.BadParameter(str(error)) from error
+    console.print(
+        f"Key #{key.id} valid until {_date(key.expires_at)} UTC, {key.daily_limit} questions/day"
+    )
 
 
 @app.command()

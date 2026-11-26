@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ArrowUp, Square } from "lucide-react";
+import { ArrowUp, KeyRound, Lock, Square } from "lucide-react";
 
 export function Composer({
   value,
@@ -66,6 +66,21 @@ export function Composer({
         Answers are generated from retrieved kubernetes.io pages and may be wrong — verify commands via the cited
         sources.
       </p>
+    </div>
+  );
+}
+
+/** Shown instead of the composer while a demo visitor browses without a key. */
+export function LockedComposer({ text, action, onUnlock }: { text: string; action: string; onUnlock: () => void }) {
+  return (
+    <div className="composer-dock">
+      <div className="locked-bar">
+        <Lock size={16} />
+        <span>{text}</span>
+        <button className="primary-button" onClick={onUnlock}>
+          <KeyRound size={15} /> {action}
+        </button>
+      </div>
     </div>
   );
 }

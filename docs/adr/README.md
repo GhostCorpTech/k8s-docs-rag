@@ -10,3 +10,4 @@ Short records of decisions that shaped the system: the context, the options cons
 | [0004](0004-sqlite-fts5-for-bm25.md) | SQLite FTS5 for BM25 instead of a search cluster | Accepted |
 | [0005](0005-strict-eval-graceful-chat.md) | Strict evaluation, graceful degradation in chat | Accepted |
 | [0006](0006-qdrant-named-volume.md) | Qdrant storage on a named volume, verified restores | Accepted |
+| [0007](0007-demo-access-keys.md) | Public demo: personal access keys with daily quotas | Accepted |

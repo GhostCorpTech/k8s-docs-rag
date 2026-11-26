@@ -10,7 +10,7 @@ and a 200-run evaluation with confidence intervals that decided the default conf
 [![FastAPI](https://img.shields.io/badge/FastAPI-SSE%20streaming-009688?logo=fastapi&logoColor=white)](backend/app/main.py)
 [![React 19](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](frontend/package.json)
 [![Qdrant](https://img.shields.io/badge/Qdrant-1.13-DC244C)](docker-compose.yml)
-[![Tests](https://img.shields.io/badge/tests-87%20passed-2ea44f)](backend/tests)
+[![Tests](https://img.shields.io/badge/tests-103%20passed-2ea44f)](backend/tests)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **English** · [Русский](README.ru.md)
@@ -30,6 +30,9 @@ and a 200-run evaluation with confidence intervals that decided the default conf
 > the core of retrieval → [`retrieval.py`](backend/app/retrieval.py) (fusion, degradation) and [`token_budget.py`](backend/app/token_budget.py) (token-exact chunking) ·
 > the evaluation harness → [`evaluation.py`](backend/app/evaluation.py) · raw per-question results → [`eval/results/`](eval/results/20261119T184220545709Z) ·
 > a non-technical summary → [case study](docs/CASE_STUDY.md).
+
+> **Live demo → [k8s-docs.ghostcorp.online](https://k8s-docs.ghostcorp.online)**<br>
+> The evaluation dashboard and a recorded answer are open to everyone. The live chat runs on a paid LLM API, so it opens with a free personal key: ask by [email](mailto:tech@ghostcorp.online) or [Telegram](https://t.me/GhostCorpTech).
 
 ## Results at a glance
 
@@ -63,6 +66,7 @@ and a 200-run evaluation with confidence intervals that decided the default conf
 - **Explains itself** — every answer has a *Retrieval details* panel: the BM25 query that was run, dense/BM25 ranks, RRF and rerank scores, per-stage latency.
 - **Degrades gracefully** — if the reranker or query translation fails, the chat falls back to hybrid order and says so; authentication/billing errors are never hidden. Evaluation runs in strict mode, where any provider error stops the run instead of silently changing a metric.
 - **Keeps the index fresh cheaply** — a new docs release re-embeds only pages whose content hash changed.
+- **Runs as a public demo without a blank cheque** — personal access keys that expire and can be revoked, daily quotas per key and per server, refunds for failed answers, a throttle on key guessing ([ADR 0007](docs/adr/0007-demo-access-keys.md)).
 
 ## Architecture
 
@@ -198,6 +202,13 @@ The first version reported Recall@5 = 0.62–0.92. A code and data audit found t
 | ![Citation hover card with page title, section and URL](docs/assets/screenshots/citation-light.png) | ![Per-question first-relevant-rank matrix across four configurations](docs/assets/screenshots/eval-detail-dark.png) |
 
 <details>
+<summary>Public demo: landing page without a key</summary>
+
+<img alt="Demo landing page: what the demo is, access key form, contacts, and links to a recorded answer and the evaluation dashboard" src="docs/assets/screenshots/demo-landing-en.png" width="100%">
+
+</details>
+
+<details>
 <summary>Empty state and mobile layout</summary>
 
 <img alt="Empty state with suggested questions" src="docs/assets/screenshots/empty-light.png" width="70%"> <img alt="Mobile chat layout" src="docs/assets/screenshots/mobile-chat-light.png" width="24%">
@@ -234,6 +245,8 @@ docker compose exec backend python -m app.cli index --sync --strategy both
 ```
 
 Open **http://localhost:3000** (UI) or **http://localhost:8088/docs** (OpenAPI).
+
+**Public demo on your own server** (behind your reverse proxy, with access keys and daily quotas): [DEPLOY.md](docs/DEPLOY.md).
 
 ### Everyday commands
 
@@ -282,6 +295,10 @@ cd frontend && npm ci && npm run dev   # http://localhost:5173, proxies /api to 
 | `GET` | `/api/eval/latest` | Metrics of the latest run |
 | `GET` | `/api/eval/latest/questions` | Per-question ranks and faithfulness for all configurations |
 | `GET` | `/health` | Liveness and configured models |
+| `GET` | `/api/demo` | Whether the demo is key-gated, key terms, contacts |
+| `GET` | `/api/demo/session` | Validate a key; remaining quota for today |
+
+In demo mode (`DEMO_MODE=true`) the chat and search endpoints require `Authorization: Bearer <key>`; everything else stays public.
 
 ```bash
 curl -N http://localhost:8088/api/chat/stream -H 'Content-Type: application/json' \
@@ -301,11 +318,12 @@ backend/app/
                    per-call usage, cost and latency logging
   evaluation.py    manifest-pinned, resumable, parallel evaluation harness
   main.py          FastAPI app and SSE endpoint
-backend/tests/     87 tests (83 offline + 4 against a real Qdrant in CI)
+  access.py        demo access keys: hashed storage, expiry, revocation, daily quotas
+backend/tests/     103 tests (99 offline + 4 against a real Qdrant in CI)
 frontend/src/      React UI: chat, citations, retrieval inspector, evaluation dashboard
 eval/              questions and the full committed benchmark run
 scripts/           offline analysis (CIs, significance, charts), live experiments, demo recording
-docs/              architecture, evaluation report, charts, generated tables
+docs/              architecture, evaluation report, ADRs, deployment, charts, generated tables
 ```
 
 ## Limitations

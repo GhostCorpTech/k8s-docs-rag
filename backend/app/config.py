@@ -52,6 +52,17 @@ class Settings(BaseSettings):
     # Chat only: cap the RU->EN query translation and fall back to the original wording.
     translation_timeout_seconds: float = Field(default=8.0, gt=0, le=120)
 
+    # Public demo: personal access keys with daily quotas (see docs/DEPLOY.md).
+    demo_mode: bool = False
+    access_db_path: Path = PROJECT_ROOT / "data" / "access.db"
+    demo_key_days: int = Field(default=30, ge=1, le=365)
+    demo_key_daily_limit: int = Field(default=20, ge=1, le=10_000)
+    demo_global_daily_limit: int = Field(default=200, ge=1, le=100_000)
+    demo_contact_email: str = ""
+    demo_contact_telegram: str = ""
+    demo_repository_url: str = ""
+    demo_public_url: str = ""
+
     docs_git_url: str = "https://github.com/kubernetes/website.git"
     docs_git_branch: str = "main"
     collection_prefix: str = "kubernetes_docs"
@@ -65,6 +76,7 @@ class Settings(BaseSettings):
             "model_cache_path",
             "api_pricing_path",
             "live_api_log_path",
+            "access_db_path",
         ):
             value = getattr(self, field_name)
             if not value.is_absolute():

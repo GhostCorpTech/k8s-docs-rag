@@ -1,5 +1,17 @@
-import { BarChart3, Database, MessageSquare, Monitor, Moon, Plus, Sun, Trash2, X } from "lucide-react";
-import type { Conversation, Health, IndexStatus, Strategy } from "../types";
+import {
+  BarChart3,
+  Database,
+  KeyRound,
+  LogOut,
+  MessageSquare,
+  Monitor,
+  Moon,
+  Plus,
+  Sun,
+  Trash2,
+  X,
+} from "lucide-react";
+import type { Conversation, DemoSession, Health, IndexStatus, Strategy } from "../types";
 
 export type View = "chat" | "eval";
 export type Theme = "system" | "light" | "dark";
@@ -37,6 +49,9 @@ export function Sidebar({
   online,
   theme,
   onTheme,
+  locked,
+  session,
+  onForgetKey,
 }: {
   open: boolean;
   onClose: () => void;
@@ -52,6 +67,10 @@ export function Sidebar({
   online: boolean | null;
   theme: Theme;
   onTheme: (theme: Theme) => void;
+  /** Demo without a key: read-only example instead of history, key entry instead of "New chat". */
+  locked?: { label: string; sectionLabel: string; onUnlock: () => void };
+  session?: DemoSession | null;
+  onForgetKey?: () => void;
 }) {
   return (
     <>
@@ -64,10 +83,16 @@ export function Sidebar({
           </button>
         </div>
 
-        <button className="new-chat" onClick={onNew}>
-          <Plus size={16} /> New chat
-          <kbd>⌘K</kbd>
-        </button>
+        {locked ? (
+          <button className="new-chat" onClick={locked.onUnlock}>
+            <KeyRound size={16} /> {locked.label}
+          </button>
+        ) : (
+          <button className="new-chat" onClick={onNew}>
+            <Plus size={16} /> New chat
+            <kbd>⌘K</kbd>
+          </button>
+        )}
 
         <nav className="nav">
           <button className={view === "chat" ? "on" : ""} onClick={() => onView("chat")}>
@@ -79,7 +104,7 @@ export function Sidebar({
         </nav>
 
         <div className="history">
-          <div className="section-label">Recent</div>
+          <div className="section-label">{locked ? locked.sectionLabel : "Recent"}</div>
           {conversations.length === 0 && <p className="muted small pad">No conversations yet.</p>}
           <ul>
             {conversations.map((item) => (
@@ -87,13 +112,15 @@ export function Sidebar({
                 <button className="history-item" onClick={() => onSelect(item.id)} title={item.title}>
                   {item.title}
                 </button>
-                <button
-                  className="icon-button delete"
-                  onClick={() => onDelete(item.id)}
-                  aria-label={`Delete “${item.title}”`}
-                >
-                  <Trash2 size={14} />
-                </button>
+                {!locked && (
+                  <button
+                    className="icon-button delete"
+                    onClick={() => onDelete(item.id)}
+                    aria-label={`Delete “${item.title}”`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -114,6 +141,36 @@ export function Sidebar({
             )}
             {health && <div className="status-line muted mono small">{health.chat_model}</div>}
           </div>
+          {session?.enabled && (
+            <div className="status-card demo-card">
+              <div className="status-line">
+                <KeyRound size={13} /> Demo access
+                {onForgetKey && (
+                  <button
+                    className="icon-button forget"
+                    onClick={onForgetKey}
+                    aria-label="Forget key"
+                    title="Forget key"
+                  >
+                    <LogOut size={13} />
+                  </button>
+                )}
+              </div>
+              <div className="status-line muted small">
+                {session.remaining_today} of {session.daily_limit} questions left today
+              </div>
+              {session.expires_at && (
+                <div className="status-line muted small">
+                  Key valid until{" "}
+                  {new Date(session.expires_at).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </div>
+              )}
+            </div>
+          )}
           <div className="theme-switch" role="radiogroup" aria-label="Theme">
             {THEMES.map(({ value, icon: Icon, label }) => (
               <button

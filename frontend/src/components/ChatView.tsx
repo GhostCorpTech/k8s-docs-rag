@@ -45,11 +45,14 @@ export function ChatView({
   onPick,
   onRetry,
   indexEmpty,
+  startAtTop,
 }: {
   conversation: Conversation | null;
   onPick: (text: string) => void;
-  onRetry: () => void;
+  onRetry?: () => void;
   indexEmpty?: boolean;
+  /** Read-only example: open at the question, not at the end of the answer. */
+  startAtTop?: boolean;
 }) {
   const end = useRef<HTMLDivElement>(null);
   const messages = conversation?.messages ?? [];
@@ -58,8 +61,8 @@ export function ChatView({
 
   useEffect(() => {
     const scroller = end.current?.closest(".scroll");
-    if (scroller) scroller.scrollTop = scroller.scrollHeight;
-  }, [signature]);
+    if (scroller) scroller.scrollTop = startAtTop ? 0 : scroller.scrollHeight;
+  }, [signature, startAtTop]);
 
   if (!messages.length) return <EmptyState onPick={onPick} indexEmpty={indexEmpty} />;
   return (

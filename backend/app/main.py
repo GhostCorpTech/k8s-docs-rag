@@ -5,12 +5,14 @@ import uuid
 from collections.abc import Iterator
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from . import __version__
+from .access import AccessError, AccessKey, AccessStore, FailureThrottle, next_reset
 from .cloud import CloudModels
 from .config import Settings, get_settings
 from .database import Database
@@ -128,6 +130,57 @@ def _retrieve(settings: Settings, request: ChatRequest, cloud: CloudModels):
     return standalone, cloud.context_hits(hits), trace
 
 
+# ---------------------------------------------------------------- demo access
+THROTTLE = FailureThrottle()
+
+
+@lru_cache(maxsize=4)
+def _access_store(path: Path) -> AccessStore:
+    return AccessStore(path)
+
+
+def _client_address(request: Request) -> str:
+    # nginx in front of the backend resolves the real client address (set_real_ip_from)
+    # and passes it as X-Real-IP; the backend port itself is not published in the demo.
+    forwarded = request.headers.get("x-real-ip")
+    return forwarded or (request.client.host if request.client else "unknown")
+
+
+def _bearer(request: Request) -> str | None:
+    scheme, _, value = request.headers.get("authorization", "").partition(" ")
+    return value.strip() or None if scheme.lower() == "bearer" else None
+
+
+def access_key(request: Request) -> AccessKey | None:
+    """Demo mode: require a valid personal key. Otherwise: open, returns None."""
+    settings = get_settings()
+    if not settings.demo_mode:
+        return None
+    client = _client_address(request)
+    THROTTLE.check(client)
+    try:
+        return _access_store(settings.access_db_path).authenticate(_bearer(request))
+    except AccessError as error:
+        if error.code != "key_required":
+            THROTTLE.failed(client)
+        raise
+
+
+Access = Annotated[AccessKey | None, Depends(access_key)]
+
+
+def _reserve(settings: Settings, key: AccessKey | None, cloud: CloudModels) -> str | None:
+    if key is None:
+        return None
+    cloud.log_context["access_key_id"] = key.id
+    return _access_store(settings.access_db_path).reserve(key, settings.demo_global_daily_limit)
+
+
+def _refund(settings: Settings, key: AccessKey | None, day: str | None) -> None:
+    if key is not None and day is not None:
+        _access_store(settings.access_db_path).refund(key, day)
+
+
 NO_HITS = "No relevant sections were found in the index. Check that the documentation is indexed."
 
 app = FastAPI(
@@ -141,6 +194,15 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(AccessError)
+def access_error(_request: Request, error: AccessError) -> JSONResponse:
+    return JSONResponse(
+        status_code=error.status,
+        content={"detail": {"code": error.code, "message": error.message}},
+        headers={"WWW-Authenticate": "Bearer"} if error.status == 401 else None,
+    )
 
 
 @app.get("/health")
@@ -160,9 +222,10 @@ def health() -> dict:
 
 
 @app.post("/api/search", response_model=SearchResponse)
-def search(request: SearchRequest) -> SearchResponse:
+def search(request: SearchRequest, key: Access) -> SearchResponse:
     settings = get_settings()
     cloud = _live_models(settings, request.query, "search")
+    day = _reserve(settings, key, cloud)
     try:
         _require_index(settings, request.strategy)
         hits, trace = Retriever(settings).search_with_trace(
@@ -173,6 +236,7 @@ def search(request: SearchRequest) -> SearchResponse:
             models=cloud,
         )
     except Exception as error:
+        _refund(settings, key, day)
         raise _request_error(error, cloud) from error
     return SearchResponse(
         query=request.query,
@@ -184,13 +248,15 @@ def search(request: SearchRequest) -> SearchResponse:
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-def chat(request: ChatRequest) -> ChatResponse:
+def chat(request: ChatRequest, key: Access) -> ChatResponse:
     settings = get_settings()
     cloud = _live_models(settings, request.question, "chat")
+    day = _reserve(settings, key, cloud)
     try:
         standalone, hits, trace = _retrieve(settings, request, cloud)
         answer = cloud.answer(request.question, hits, _history(request)) if hits else NO_HITS
     except Exception as error:
+        _refund(settings, key, day)
         raise _request_error(error, cloud) from error
     return ChatResponse(
         answer=answer,
@@ -207,11 +273,15 @@ def _sse(event: str, payload: dict) -> str:
 
 
 @app.post("/api/chat/stream")
-def chat_stream(request: ChatRequest) -> StreamingResponse:
+def chat_stream(request: ChatRequest, key: Access) -> StreamingResponse:
     """Server-Sent Events: ``sources`` once retrieval finishes, then ``delta`` tokens,
-    then ``done`` (or ``error``). Sources arrive before the first token."""
+    then ``done`` (or ``error``). Sources arrive before the first token.
+
+    In demo mode the quota is checked before the stream opens, so an exhausted key gets
+    a plain HTTP 429 rather than an event; a failed answer is refunded."""
     settings = get_settings()
     cloud = _live_models(settings, request.question, "chat_stream")
+    day = _reserve(settings, key, cloud)
 
     def events() -> Iterator[str]:
         started = time.perf_counter()
@@ -241,6 +311,7 @@ def chat_stream(request: ChatRequest) -> StreamingResponse:
                 },
             )
         except Exception as error:  # noqa: BLE001 - reported to the client as an SSE event
+            _refund(settings, key, day)
             yield _sse("error", {"detail": _error_detail(error, cloud)})
 
     return StreamingResponse(
@@ -248,6 +319,41 @@ def chat_stream(request: ChatRequest) -> StreamingResponse:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.get("/api/demo")
+def demo_info() -> dict:
+    """Public: whether the demo is key-gated, the key terms and where to ask for a key."""
+    settings = get_settings()
+    return {
+        "enabled": settings.demo_mode,
+        "key_days": settings.demo_key_days,
+        "key_daily_limit": settings.demo_key_daily_limit,
+        "contact": {
+            "email": settings.demo_contact_email or None,
+            "telegram": settings.demo_contact_telegram or None,
+        },
+        "repository_url": settings.demo_repository_url or None,
+    }
+
+
+@app.get("/api/demo/session")
+def demo_session(key: Access) -> dict:
+    """Validate the caller's key and report its remaining quota (never its label)."""
+    if key is None:
+        return {"enabled": False}
+    settings = get_settings()
+    store = _access_store(settings.access_db_path)
+    used = store.used_today(key.id)
+    remaining_global = max(settings.demo_global_daily_limit - store.used_today(), 0)
+    return {
+        "enabled": True,
+        "expires_at": key.expires_at.isoformat(),
+        "daily_limit": key.daily_limit,
+        "used_today": used,
+        "remaining_today": min(max(key.daily_limit - used, 0), remaining_global),
+        "resets_at": next_reset(store.clock()).isoformat(),
+    }
 
 
 @app.get("/api/index/status")

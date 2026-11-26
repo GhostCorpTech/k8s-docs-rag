@@ -1,13 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, SquarePen } from "lucide-react";
-import { getHealth, getIndexStatus, streamChat, type ChatTurn } from "./api";
+import { KeyRound, Menu, SquarePen } from "lucide-react";
+import { ApiError, getDemo, getHealth, getIndexStatus, getSession, streamChat, type ChatTurn } from "./api";
 import { ChatView } from "./components/ChatView";
-import { Composer } from "./components/Composer";
+import { Composer, LockedComposer } from "./components/Composer";
 import { EvalView } from "./components/EvalView";
+import { Landing } from "./components/Landing";
 import { SettingsMenu } from "./components/SettingsMenu";
 import { Brand, Sidebar, type Theme, type View } from "./components/Sidebar";
+import { clearKey, keyFromLink, loadKey, saveKey } from "./lib/access";
+import { STRINGS, loadLang, saveLang, type Lang } from "./lib/i18n";
 import { loadConversations, loadSettings, saveConversations, saveSettings, titleFrom, uid } from "./lib/store";
-import type { AssistantMessage, Conversation, Health, IndexStatus, RetrievalSettings, Strategy } from "./types";
+import type {
+  AssistantMessage,
+  Conversation,
+  DemoInfo,
+  DemoSession,
+  Health,
+  IndexStatus,
+  RetrievalSettings,
+  Strategy,
+} from "./types";
+
+/** open: no demo gate · locked: demo without a valid key (landing + read-only) · granted: valid key */
+type Access = "loading" | "open" | "locked" | "granted";
 
 const HISTORY_MESSAGES = 6;
 
@@ -41,7 +56,77 @@ export function App() {
   const [index, setIndex] = useState<Record<Strategy, IndexStatus> | null>(null);
   const abort = useRef<AbortController | null>(null);
 
-  const active = useMemo(() => conversations.find((item) => item.id === activeId) ?? null, [conversations, activeId]);
+  // Public demo gate
+  const [linkKey] = useState(keyFromLink);
+  const [demo, setDemo] = useState<DemoInfo | null>(null);
+  const [access, setAccess] = useState<Access>("loading");
+  const [session, setSession] = useState<DemoSession | null>(null);
+  const [lockReason, setLockReason] = useState<string | null>(null);
+  const [explore, setExplore] = useState(() => location.hash.startsWith("#/eval"));
+  const [sample, setSample] = useState<Conversation | null>(null);
+  const [lang, setLang] = useState<Lang>(loadLang);
+  const t = STRINGS[lang];
+  const readOnly = access === "locked";
+
+  const active = useMemo(
+    () => (readOnly ? sample : (conversations.find((item) => item.id === activeId) ?? null)),
+    [readOnly, sample, conversations, activeId],
+  );
+
+  /** Validate a key; returns an error code for the landing form, or null when access is granted. */
+  const unlock = useCallback(async (key: string): Promise<string | null> => {
+    try {
+      const value = await getSession(key);
+      saveKey(key);
+      setSession(value);
+      setAccess("granted");
+      setExplore(false);
+      setLockReason(null);
+      return null;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        clearKey();
+        setAccess("locked");
+        return error.code ?? "invalid_key";
+      }
+      setAccess((current) => (current === "granted" ? current : "locked"));
+      return error instanceof ApiError && error.code ? error.code : "network";
+    }
+  }, []);
+
+  const lock = useCallback((reason: string | null) => {
+    clearKey();
+    setSession(null);
+    setLockReason(reason);
+    setExplore(false);
+    setAccess("locked");
+  }, []);
+
+  useEffect(() => {
+    getDemo()
+      .then(async (info) => {
+        setDemo(info);
+        if (!info.enabled) return setAccess("open");
+        if (linkKey) saveKey(linkKey);
+        const stored = loadKey();
+        if (!stored) return setAccess("locked");
+        setLockReason(await unlock(stored));
+      })
+      .catch(() => setAccess("open")); // older backend or offline: the normal UI reports it
+  }, [linkKey, unlock]);
+
+  useEffect(() => {
+    if (!readOnly || sample) return;
+    fetch("/sample-conversation.json")
+      .then((response) => (response.ok ? (response.json() as Promise<Conversation>) : null))
+      .then((value) => value && setSample(value))
+      .catch(() => undefined);
+  }, [readOnly, sample]);
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    saveLang(lang);
+  }, [lang]);
 
   useEffect(() => {
     getHealth()
@@ -116,6 +201,7 @@ export function App() {
     );
 
   async function ask(question: string, base: Conversation | null) {
+    if (readOnly) return;
     const conversation: Conversation = base ?? {
       id: uid(),
       title: titleFrom(question),
@@ -191,9 +277,14 @@ export function App() {
           ? { status: "stopped" }
           : { status: "error", error: caught instanceof Error ? caught.message : "Request failed" },
       );
+      if (caught instanceof ApiError && caught.status === 401) lock(caught.code);
     } finally {
       setBusy(false);
       abort.current = null;
+      if (access === "granted")
+        getSession()
+          .then(setSession)
+          .catch((error) => error instanceof ApiError && error.status === 401 && lock(error.code));
     }
   }
 
@@ -211,6 +302,28 @@ export function App() {
     if (id === activeId) setActiveId(null);
   }
 
+  if (access === "loading") return <div className="boot" aria-busy />;
+
+  if (access === "locked" && !explore && demo)
+    return (
+      <Landing
+        demo={demo}
+        t={t}
+        lang={lang}
+        onLang={setLang}
+        reason={lockReason}
+        onUnlock={unlock}
+        onSample={() => {
+          setExplore(true);
+          setView("chat");
+        }}
+        onEval={() => {
+          setExplore(true);
+          setView("eval");
+        }}
+      />
+    );
+
   return (
     <div className="shell">
       <Sidebar
@@ -221,8 +334,8 @@ export function App() {
           setView(value);
           setSidebar(false);
         }}
-        conversations={conversations}
-        activeId={activeId}
+        conversations={readOnly ? (sample ? [sample] : []) : conversations}
+        activeId={readOnly ? (sample?.id ?? null) : activeId}
         onSelect={(id) => {
           setActiveId(id);
           setView("chat");
@@ -235,6 +348,11 @@ export function App() {
         online={online}
         theme={theme}
         onTheme={setTheme}
+        locked={
+          readOnly ? { label: t.enterKey, sectionLabel: t.sampleLabel, onUnlock: () => setExplore(false) } : undefined
+        }
+        session={access === "granted" ? session : null}
+        onForgetKey={access === "granted" ? () => lock(null) : undefined}
       />
       <main className="main">
         <header className="topbar">
@@ -248,10 +366,16 @@ export function App() {
             {view === "eval" ? "Evaluation" : (active?.title ?? "New chat")}
           </h2>
           <div className="topbar-actions">
-            {view === "chat" && <SettingsMenu settings={settings} onChange={setSettings} />}
-            <button className="icon-button mobile-only" onClick={newChat} aria-label="New chat">
-              <SquarePen size={18} />
-            </button>
+            {view === "chat" && !readOnly && <SettingsMenu settings={settings} onChange={setSettings} />}
+            {readOnly ? (
+              <button className="icon-button mobile-only" onClick={() => setExplore(false)} aria-label={t.enterKey}>
+                <KeyRound size={18} />
+              </button>
+            ) : (
+              <button className="icon-button mobile-only" onClick={newChat} aria-label="New chat">
+                <SquarePen size={18} />
+              </button>
+            )}
           </div>
         </header>
         {view === "eval" ? (
@@ -264,18 +388,23 @@ export function App() {
               <ChatView
                 conversation={active}
                 onPick={(text) => void ask(text, null)}
-                onRetry={retry}
+                onRetry={readOnly ? undefined : retry}
+                startAtTop={readOnly}
                 indexEmpty={index != null && index.window.pages + index.heading.pages === 0}
               />
             </div>
-            <Composer
-              value={draft}
-              onChange={setDraft}
-              busy={busy}
-              disabled={online === false}
-              onStop={() => abort.current?.abort()}
-              onSubmit={() => void ask(draft.trim(), active)}
-            />
+            {readOnly ? (
+              <LockedComposer text={t.lockedBar} action={t.enterKey} onUnlock={() => setExplore(false)} />
+            ) : (
+              <Composer
+                value={draft}
+                onChange={setDraft}
+                busy={busy}
+                disabled={online === false}
+                onStop={() => abort.current?.abort()}
+                onSubmit={() => void ask(draft.trim(), active)}
+              />
+            )}
           </>
         )}
       </main>

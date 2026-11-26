@@ -1,12 +1,37 @@
-import type { EvalQuestion, EvalSummary, Health, IndexStatus, RetrievalSettings, Strategy, StreamEvent } from "./types";
+import { authHeaders } from "./lib/access";
+import type {
+  DemoInfo,
+  DemoSession,
+  EvalQuestion,
+  EvalSummary,
+  Health,
+  IndexStatus,
+  RetrievalSettings,
+  Strategy,
+  StreamEvent,
+} from "./types";
 
 // Empty by default: the UI is served behind the same origin as the API (nginx / Vite proxy).
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
+/** An HTTP error with the backend's stable code (`invalid_key`, `key_quota`, …) when it sent one. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: string | null = null,
+  ) {
+    super(message);
+  }
+}
+
 async function json<T>(response: Response): Promise<T> {
   if (response.ok) return response.json() as Promise<T>;
   const body = await response.json().catch(() => ({}));
-  throw new Error(typeof body.detail === "string" ? body.detail : `HTTP ${response.status}`);
+  const detail = body.detail;
+  if (detail && typeof detail === "object" && typeof detail.message === "string")
+    throw new ApiError(detail.message, response.status, detail.code ?? null);
+  throw new ApiError(typeof detail === "string" ? detail : `HTTP ${response.status}`, response.status);
 }
 
 export const getHealth = async () => json<Health>(await fetch(`${API_URL}/health`));
@@ -15,6 +40,13 @@ export const getIndexStatus = async () =>
 export const getEval = async () => json<EvalSummary>(await fetch(`${API_URL}/api/eval/latest`));
 export const getEvalQuestions = async () =>
   json<{ run_id: string | null; questions: EvalQuestion[] }>(await fetch(`${API_URL}/api/eval/latest/questions`));
+export const getDemo = async () => json<DemoInfo>(await fetch(`${API_URL}/api/demo`));
+export const getSession = async (key?: string) =>
+  json<DemoSession>(
+    await fetch(`${API_URL}/api/demo/session`, {
+      headers: key ? { Authorization: `Bearer ${key.trim()}` } : authHeaders(),
+    }),
+  );
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -31,7 +63,7 @@ export async function streamChat(
 ): Promise<void> {
   const response = await fetch(`${API_URL}/api/chat/stream`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+    headers: { "Content-Type": "application/json", Accept: "text/event-stream", ...authHeaders() },
     body: JSON.stringify({ question, ...settings, history }),
     signal,
   });

@@ -1,0 +1,75 @@
+# Public demo behind your own reverse proxy (see docs/DEPLOY.md).
+#
+#   docker compose -f docker-compose.demo.yml up -d --build
+#
+# Differences from docker-compose.yml:
+#   - only the web container is published, on 127.0.0.1:${DEMO_PORT} (Qdrant and the API are
+#     reachable only inside the compose network);
+#   - DEMO_MODE=true: the chat needs a personal access key with daily quotas;
+#   - the evaluation results are mounted read-only.
+name: k8s-docs-rag-demo
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.13.6
+    restart: unless-stopped
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/6333"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      RAG_PROJECT_ROOT: /app
+      QDRANT_URL: http://qdrant:6333
+      SQLITE_PATH: /app/data/rag.db
+      DOCS_REPO_PATH: /app/data/kubernetes-website
+      MODEL_CACHE_PATH: /app/data/models
+      EVAL_PATH: /app/eval/questions.jsonl
+      API_PRICING_PATH: /app/data/billing/pricing.json
+      HF_HOME: /app/data/models
+      HF_HUB_CACHE: /app/data/models
+      XDG_CACHE_HOME: /app/data/models/.cache
+      TMPDIR: /app/.tmp
+      DEMO_MODE: "true"
+      ACCESS_DB_PATH: /app/data/access.db
+      DEMO_KEY_DAYS: ${DEMO_KEY_DAYS:-30}
+      DEMO_KEY_DAILY_LIMIT: ${DEMO_KEY_DAILY_LIMIT:-20}
+      DEMO_GLOBAL_DAILY_LIMIT: ${DEMO_GLOBAL_DAILY_LIMIT:-200}
+      DEMO_CONTACT_EMAIL: ${DEMO_CONTACT_EMAIL:-tech@ghostcorp.online}
+      DEMO_CONTACT_TELEGRAM: ${DEMO_CONTACT_TELEGRAM:-https://t.me/GhostCorpTech}
+      DEMO_REPOSITORY_URL: ${DEMO_REPOSITORY_URL:-}
+      DEMO_PUBLIC_URL: ${DEMO_PUBLIC_URL:-}
+    volumes:
+      - ./data:/app/data
+      - ./eval:/app/eval:ro
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    ports:
+      # Loopback only: your reverse proxy (nginx, WAF) is the public entry point.
+      # If that proxy runs in a container, set DEMO_BIND to an address it can reach.
+      - "${DEMO_BIND:-127.0.0.1}:${DEMO_PORT:-8090}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  qdrant_storage:

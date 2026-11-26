@@ -10,7 +10,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-SSE%20streaming-009688?logo=fastapi&logoColor=white)](backend/app/main.py)
 [![React 19](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](frontend/package.json)
 [![Qdrant](https://img.shields.io/badge/Qdrant-1.13-DC244C)](docker-compose.yml)
-[![Tests](https://img.shields.io/badge/tests-87%20passed-2ea44f)](backend/tests)
+[![Tests](https://img.shields.io/badge/tests-103%20passed-2ea44f)](backend/tests)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 [English](README.md) · **Русский**
@@ -30,6 +30,9 @@
 > ядро поиска → [`retrieval.py`](backend/app/retrieval.py) (слияние, деградация) и [`token_budget.py`](backend/app/token_budget.py) (чанкинг по токенам) ·
 > система оценки → [`evaluation.py`](backend/app/evaluation.py) · сырые результаты по вопросам → [`eval/results/`](eval/results/20261119T184220545709Z) ·
 > описание для заказчика → [кейс](docs/CASE_STUDY.ru.md).
+
+> **Живое демо → [k8s-docs.ghostcorp.online](https://k8s-docs.ghostcorp.online)**<br>
+> Дашборд оценки и записанный ответ открыты всем. Живой чат работает на платном LLM API, поэтому открывается по бесплатному личному ключу: напишите на [почту](mailto:tech@ghostcorp.online) или в [Telegram](https://t.me/GhostCorpTech).
 
 ## Результаты коротко
 
@@ -63,6 +66,7 @@
 - **Объясняет себя** — у каждого ответа есть панель *Retrieval details*: выполненный BM25-запрос, ранги dense/BM25, оценки RRF и reranker-а, задержка по этапам.
 - **Деградирует аккуратно** — если reranker или перевод запроса упали, чат вернёт гибридную выдачу и честно об этом скажет; ошибки авторизации и баланса никогда не скрываются. Eval работает в строгом режиме: любая ошибка провайдера останавливает прогон, а не меняет метрику молча.
 - **Дёшево поддерживает актуальность** — при выходе новой версии документации переэмбеддятся только страницы с изменившимся хэшем.
+- **Работает как публичное демо без риска для бюджета** — личные ключи доступа со сроком действия и отзывом, дневные лимиты на ключ и на сервер, возврат лимита за упавшие ответы, защита от перебора ключей ([ADR 0007](docs/adr/0007-demo-access-keys.md)).
 
 ## Архитектура
 
@@ -198,6 +202,13 @@ Reranker двигает многие вопросы в *обе* стороны: 
 | ![Карточка цитаты: страница, раздел, URL](docs/assets/screenshots/citation-light.png) | ![Матрица ранга первой релевантной страницы по вопросам и конфигурациям](docs/assets/screenshots/eval-detail-dark.png) |
 
 <details>
+<summary>Публичное демо: стартовая страница без ключа</summary>
+
+<img alt="Стартовая страница демо: что это, ввод ключа доступа, контакты, ссылки на записанный ответ и дашборд оценки" src="docs/assets/screenshots/demo-landing-ru.png" width="100%">
+
+</details>
+
+<details>
 <summary>Пустой экран и мобильная версия</summary>
 
 <img alt="Пустой экран с примерами вопросов" src="docs/assets/screenshots/empty-light.png" width="70%"> <img alt="Мобильная версия чата" src="docs/assets/screenshots/mobile-chat-light.png" width="24%">
@@ -234,6 +245,8 @@ docker compose exec backend python -m app.cli index --sync --strategy both
 ```
 
 Откройте **http://localhost:3000** (UI) или **http://localhost:8088/docs** (OpenAPI).
+
+**Публичное демо на своём сервере** (за вашим reverse proxy, с ключами доступа и дневными лимитами): [DEPLOY.md](docs/DEPLOY.md).
 
 ### Основные команды
 
@@ -282,6 +295,10 @@ cd frontend && npm ci && npm run dev   # http://localhost:5173, проксиру
 | `GET` | `/api/eval/latest` | Метрики последнего прогона |
 | `GET` | `/api/eval/latest/questions` | Ранги и faithfulness по каждому вопросу и конфигурации |
 | `GET` | `/health` | Состояние и настроенные модели |
+| `GET` | `/api/demo` | Включён ли доступ по ключам, условия ключа, контакты |
+| `GET` | `/api/demo/session` | Проверка ключа и остаток лимита на сегодня |
+
+В режиме демо (`DEMO_MODE=true`) эндпоинты чата и поиска требуют `Authorization: Bearer <key>`; остальное открыто.
 
 ```bash
 curl -N http://localhost:8088/api/chat/stream -H 'Content-Type: application/json' \
@@ -301,11 +318,12 @@ backend/app/
                    учёт usage, стоимости и задержки по каждому вызову
   evaluation.py    eval-харнесс: manifest, resume, параллельность
   main.py          FastAPI и SSE-эндпоинт
-backend/tests/     87 тестов (83 офлайн + 4 на настоящем Qdrant в CI)
+  access.py        ключи доступа к демо: хранение хэшей, срок действия, отзыв, дневные лимиты
+backend/tests/     103 теста (99 офлайн + 4 на настоящем Qdrant в CI)
 frontend/src/      React UI: чат, цитаты, панель retrieval, дашборд оценки
 eval/              вопросы и полный сохранённый прогон бенчмарка
 scripts/           офлайн-анализ (ДИ, значимость, графики), live-эксперименты, запись демо
-docs/              архитектура, отчёт об оценке, графики, сгенерированные таблицы
+docs/              архитектура, отчёт об оценке, ADR, развёртывание, графики, сгенерированные таблицы
 ```
 
 ## Ограничения

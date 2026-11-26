@@ -1,8 +1,19 @@
 # Changelog
 
-## 1.0.0 — 2026-11-25
+## 1.0.0 — 2026-11-26
 
-Portfolio release.
+First public release.
+
+### Public demo mode (26 Nov)
+The project can be hosted for reviewers without exposing the paid LLM API.
+- `DEMO_MODE` with personal access keys (`backend/app/access.py`): 144-bit random keys, only a SHA-256 hash stored, expiry, immediate revocation; daily quotas per key (default 20) and server-wide (default 200), checked and counted in one SQLite transaction, refunded when the provider fails; invalid-key throttle per client address. [ADR 0007](docs/adr/0007-demo-access-keys.md).
+- CLI: `create-key` (prints a ready link when `DEMO_PUBLIC_URL` is set), `list-keys` (state, today's usage, totals, last use), `revoke-key`, `extend-key`.
+- `GET /api/demo` (public: gate on/off, key terms, contacts) and `GET /api/demo/session` (key check, remaining quota). Chat and search require `Authorization: Bearer <key>` in demo mode; read-only endpoints stay public.
+- Landing page for visitors without a key (English/Russian): what the demo is, key entry, contacts, a recorded answer and the evaluation dashboard open without a key. Key links (`/#/?key=…`) keep the key in the URL fragment, which never reaches the server.
+- In the chat: remaining questions and key expiry in the sidebar, "forget key", return to the landing page with an explanation when a key is revoked or expires.
+- `docker-compose.demo.yml`: only the web container is published, on `127.0.0.1:${DEMO_PORT}`, behind the operator's reverse proxy; evaluation results mounted read-only. nginx resolves the client address from `X-Forwarded-For` (private hops only) and passes `X-Accel-Buffering` through for SSE.
+- [docs/DEPLOY.md](docs/DEPLOY.md): server deployment, reverse-proxy settings, key management, cost bounds.
+- 16 tests for keys, quotas, refunds, throttling and the CLI (103 in total).
 
 ### Index repair, ablations, refusals and the 400 root cause (25 Nov, evening)
 - Found that a packaged index restored with all 32,088 vectors equal to zero (Qdrant mmap storage on a Windows bind mount); added `verify-index` (page hashes vs docs source, chunk IDs, vector norms, re-embedding sample) and `repair-vectors` (resumable re-embedding from stored chunk text). Repaired index reproduces the benchmark: window 50/50 identical top-10 lists.

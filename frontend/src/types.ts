@@ -149,3 +149,20 @@ export interface EvalQuestion {
   relevant_urls: string[];
   results: Record<string, QuestionResult>;
 }
+
+export interface DemoInfo {
+  enabled: boolean;
+  key_days: number;
+  key_daily_limit: number;
+  contact: { email: string | null; telegram: string | null };
+  repository_url: string | null;
+}
+
+export interface DemoSession {
+  enabled: boolean;
+  expires_at?: string;
+  daily_limit?: number;
+  used_today?: number;
+  remaining_today?: number;
+  resets_at?: string;
+}
